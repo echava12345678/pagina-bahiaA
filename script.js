@@ -42,13 +42,12 @@ const modalText = document.getElementById('modal-text');
 const closeBtn = document.querySelector('.close-button');
 const userMessage = document.getElementById('user-message');
 const passMessage = document.getElementById('pass-message');
-const addInvoiceButton = document.getElementById('add-invoice-button'); // Nuevo botón
-const saveResidentButton = document.getElementById('save-resident-button'); // Botón de guardar
-const addResidentButton = document.getElementById('add-resident-button'); // Botón de agregar residente
+const saveOrAddButton = document.getElementById('save-or-add-button'); // Botón unificado
+const clearFormButton = document.getElementById('clear-form-button');
 
 let isEditing = false;
 let currentResidentId = null;
-let currentResidentDocId = null; 
+let currentResidentDocId = null;
 
 // Función para mostrar mensajes modales
 function showMessage(message) {
@@ -86,7 +85,7 @@ loginForm.addEventListener('submit', async (e) => {
     try {
         // Autenticación de administrador
         if (isAdmin) {
-            if (username === 'admin' && password === 'admin123') { // Credenciales de admin fijas para demostración
+            if (username === 'admin' && password === 'admin123') {
                 loginPanel.classList.add('hidden');
                 adminPanel.classList.remove('hidden');
                 loginMessage.textContent = '';
@@ -100,7 +99,7 @@ loginForm.addEventListener('submit', async (e) => {
         const residentsCollection = collection(db, 'residents');
         const q = query(residentsCollection, where("usuario", "==", username));
         const querySnapshot = await getDocs(q);
-        
+
         if (querySnapshot.empty) {
             loginMessage.textContent = 'Usuario no encontrado.';
             return;
@@ -108,14 +107,14 @@ loginForm.addEventListener('submit', async (e) => {
 
         const residentDoc = querySnapshot.docs[0];
         const residentData = residentDoc.data();
-        
+
         if (residentData.contrasena === password) {
             loginPanel.classList.add('hidden');
             residentPanel.classList.remove('hidden');
             residentNameDisplay.textContent = residentData.nombre;
             residentDeptoDisplay.textContent = residentData.depto;
             renderResidentInvoices(residentData);
-            currentResidentDocId = residentDoc.id; 
+            currentResidentDocId = residentDoc.id;
             loginMessage.textContent = '';
         } else {
             loginMessage.textContent = 'Contraseña incorrecta.';
@@ -130,11 +129,6 @@ loginForm.addEventListener('submit', async (e) => {
 // Lógica para guardar o agregar datos del residente (Admin)
 residentForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    // Si estamos editando, no hacemos nada con el submit del formulario
-    if (isEditing) {
-        return;
-    }
 
     const depto = residentForm.depto.value;
     const name = residentForm['resident-name'].value;
@@ -146,52 +140,6 @@ residentForm.addEventListener('submit', async (e) => {
     const paid = paidStatusCheckbox.checked;
     const paymentDate = paid ? residentForm['payment-date'].value : null;
 
-    const invoiceData = {
-        fecha_factura: dueDate,
-        monto_factura: amount,
-        factura_estado: paid ? 'Pagado' : 'Pendiente',
-        concepto_factura: concept,
-        fecha_pago: paymentDate
-    };
-    
-    try {
-        await addDoc(collection(db, 'residents'), {
-            depto: depto,
-            nombre: name,
-            usuario: user,
-            contrasena: pass,
-            invoices: [invoiceData],
-            credentials_updated: false
-        });
-        showMessage('Residente agregado correctamente.');
-        
-        // Limpiar formulario
-        residentForm.reset();
-        paymentDateContainer.classList.add('hidden');
-    } catch (e) {
-        console.error("Error al guardar el documento: ", e);
-        showMessage('Error al guardar los datos.');
-    }
-});
-
-// Lógica para el botón "Agregar Factura"
-addInvoiceButton.addEventListener('click', async () => {
-    if (!isEditing || !currentResidentId) {
-        showMessage('Por favor, selecciona un residente para agregar una factura.');
-        return;
-    }
-
-    const dueDate = residentForm['due-date'].value;
-    const amount = parseFloat(residentForm.amount.value.replace(/\./g, ''));
-    const concept = residentForm.concept.value;
-    const paid = paidStatusCheckbox.checked;
-    const paymentDate = paid ? residentForm['payment-date'].value : null;
-
-    if (!dueDate || !amount || !concept) {
-        showMessage('Por favor, completa todos los campos de la factura.');
-        return;
-    }
-
     const newInvoice = {
         fecha_factura: dueDate,
         monto_factura: amount,
@@ -201,27 +149,50 @@ addInvoiceButton.addEventListener('click', async () => {
     };
 
     try {
-        const residentRef = doc(db, 'residents', currentResidentId);
-        const residentDoc = await getDoc(residentRef);
-        const residentData = residentDoc.data();
-        
-        const updatedInvoices = residentData.invoices ? [...residentData.invoices, newInvoice] : [newInvoice];
+        if (isEditing) {
+            // Lógica para actualizar (agregar una nueva factura)
+            const residentRef = doc(db, 'residents', currentResidentId);
+            const residentDoc = await getDoc(residentRef);
+            const residentData = residentDoc.data();
 
-        await updateDoc(residentRef, { invoices: updatedInvoices });
-        showMessage('Factura agregada correctamente.');
-        
-        // Limpiar los campos del formulario de la factura
-        residentForm['due-date'].value = '';
-        residentForm.amount.value = '';
-        residentForm.concept.value = '';
-        paidStatusCheckbox.checked = false;
+            const updatedInvoices = residentData.invoices ? [...residentData.invoices, newInvoice] : [newInvoice];
+
+            await updateDoc(residentRef, {
+                invoices: updatedInvoices
+            });
+            showMessage('Factura agregada correctamente.');
+        } else {
+            // Lógica para agregar un nuevo residente
+            await addDoc(collection(db, 'residents'), {
+                depto: depto,
+                nombre: name,
+                usuario: user,
+                contrasena: pass,
+                invoices: [newInvoice],
+                credentials_updated: false
+            });
+            showMessage('Residente agregado correctamente.');
+        }
+
+        // Limpiar formulario y resetear estado
+        residentForm.reset();
         paymentDateContainer.classList.add('hidden');
-        residentForm['payment-date'].value = '';
-
+        saveOrAddButton.textContent = 'Agregar Residente';
+        isEditing = false;
+        currentResidentId = null;
     } catch (e) {
-        console.error("Error al agregar la factura: ", e);
-        showMessage('Error al agregar la factura.');
+        console.error("Error al guardar/actualizar el documento: ", e);
+        showMessage('Error al guardar los datos.');
     }
+});
+
+// Lógica para limpiar el formulario
+clearFormButton.addEventListener('click', () => {
+    residentForm.reset();
+    paymentDateContainer.classList.add('hidden');
+    saveOrAddButton.textContent = 'Agregar Residente';
+    isEditing = false;
+    currentResidentId = null;
 });
 
 // Escuchar cambios en la colección de residentes y renderizar la tabla
@@ -230,8 +201,8 @@ onSnapshot(collection(db, 'residents'), (querySnapshot) => {
     querySnapshot.forEach((doc) => {
         const data = doc.data();
         const row = document.createElement('tr');
-        
-        const latestInvoice = data.invoices ? data.invoices[data.invoices.length - 1] : {};
+
+        const latestInvoice = data.invoices && data.invoices.length > 0 ? data.invoices[data.invoices.length - 1] : {};
 
         row.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap">${data.depto}</td>
@@ -265,17 +236,12 @@ residentsTableBody.addEventListener('click', async (e) => {
             const residentDoc = await getDoc(doc(db, 'residents', residentId));
             if (residentDoc.exists()) {
                 const data = residentDoc.data();
-                
+
                 // Llena el formulario con los datos del residente
                 residentForm.depto.value = data.depto;
                 residentForm['resident-name'].value = data.nombre;
                 residentForm.user.value = data.usuario;
                 residentForm.pass.value = data.contrasena;
-
-                // Cambiar el texto del botón y mostrar el botón de agregar factura
-                saveResidentButton.textContent = 'Actualizar Datos';
-                addInvoiceButton.classList.remove('hidden');
-                addResidentButton.classList.add('hidden');
 
                 // Lógica para deshabilitar campos si el residente ya los actualizó
                 if (data.credentials_updated) {
@@ -290,8 +256,18 @@ residentsTableBody.addEventListener('click', async (e) => {
                     passMessage.textContent = '';
                 }
 
+                // Cambiar el texto del botón y setear el estado
+                saveOrAddButton.textContent = 'Agregar Factura';
                 isEditing = true;
                 currentResidentId = residentId;
+
+                // Limpiar campos de factura para que el usuario pueda agregar una nueva
+                residentForm['due-date'].value = '';
+                residentForm.amount.value = '';
+                residentForm.concept.value = '';
+                paidStatusCheckbox.checked = false;
+                paymentDateContainer.classList.add('hidden');
+                residentForm['payment-date'].value = '';
             }
         } catch (error) {
             console.error("Error al obtener el documento para editar: ", error);
@@ -303,7 +279,7 @@ residentsTableBody.addEventListener('click', async (e) => {
 // Lógica para renderizar facturas de residente
 function renderResidentInvoices(data) {
     invoicesList.innerHTML = '';
-    
+
     if (!data.invoices || data.invoices.length === 0) {
         invoicesList.innerHTML = '<p class="text-gray-500">No hay facturas disponibles.</p>';
         return;
@@ -312,16 +288,16 @@ function renderResidentInvoices(data) {
     data.invoices.forEach(invoice => {
         const invoiceItem = document.createElement('div');
         invoiceItem.classList.add('p-4', 'rounded-lg', 'shadow-md');
-        
-        const dueDate = new Date(invoice.fecha_factura + 'T00:00:00'); 
+
+        const dueDate = new Date(invoice.fecha_factura + 'T00:00:00');
         const today = new Date();
-        today.setHours(0, 0, 0, 0); 
-        
+        today.setHours(0, 0, 0, 0);
+
         let multa = 0;
 
         if (invoice.factura_estado === 'Pendiente' && today > dueDate) {
             const diffTime = Math.abs(today - dueDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             multa = diffDays * 10000;
         }
 
@@ -405,7 +381,7 @@ async function generatePDF(data, type) {
             textColor: 255
         }
     });
-    
+
     const total = data.monto_factura + data.multa;
 
     doc.setFontSize(12);
@@ -420,17 +396,17 @@ async function generatePDF(data, type) {
         doc.text(`Fecha de Pago: ${data.fecha_pago}`, 140, doc.lastAutoTable.finalY + 24);
         doc.setTextColor(0);
     }
-    
+
     doc.setLineWidth(0.5);
     doc.line(140, doc.lastAutoTable.finalY + 28, 190, doc.lastAutoTable.finalY + 28);
-    
+
     doc.setFontSize(16);
     doc.text(`TOTAL PAGADO: $${total.toLocaleString('es-CO')}`, 140, doc.lastAutoTable.finalY + 38);
 
     doc.setFontSize(10);
     doc.setTextColor(150);
     doc.text('Este es un recibo generado automáticamente. No se requiere firma.', 105, 270, null, null, 'center');
-    
+
     doc.save(`Recibo_Factura_${data.depto}.pdf`);
 }
 
@@ -481,7 +457,7 @@ excelUpload.addEventListener('change', (e) => {
 // Lógica para cambiar credenciales del residente
 changeCredentialsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const oldPassword = changeCredentialsForm['old-password'].value; 
+    const oldPassword = changeCredentialsForm['old-password'].value;
     const newUsername = changeCredentialsForm['new-username'].value;
     const newPassword = changeCredentialsForm['new-password'].value;
 
