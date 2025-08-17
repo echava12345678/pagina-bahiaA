@@ -258,11 +258,14 @@ function renderResidentInvoices(data) {
     const invoiceItem = document.createElement('div');
     invoiceItem.classList.add('p-4', 'rounded-lg', 'shadow-md');
     
-    const dueDate = new Date(data.fecha_factura);
+    const dueDate = new Date(data.fecha_factura + 'T00:00:00'); // Asegura que la hora se establezca a medianoche para una comparación precisa
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Establecer la hora de hoy a medianoche
+    
     let multa = 0;
 
-    if (data.factura_estado !== 'Pagado' && today > dueDate) {
+    // Se cambió la lógica de cálculo de multa para que solo aplique si el estado es pendiente
+    if (data.factura_estado === 'Pendiente' && today > dueDate) {
         const diffTime = Math.abs(today - dueDate);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         multa = diffDays * 10000; // Multa de $10.000 por día de retraso
@@ -277,11 +280,11 @@ function renderResidentInvoices(data) {
         </div>
         <p><strong>Monto:</strong> $${data.monto_factura.toLocaleString('es-CO')}</p>
         <p><strong>Fecha de Vencimiento:</strong> ${data.fecha_factura}</p>
-        ${data.factura_estado !== 'Pagado' && multa > 0 ? `<p class="text-red-500 font-semibold"><strong>Multa por Mora:</strong> $${multa.toLocaleString('es-CO')}</p>` : ''}
+        ${multa > 0 ? `<p class="text-red-500 font-semibold"><strong>Multa por Mora:</strong> $${multa.toLocaleString('es-CO')}</p>` : ''}
         <p><strong>Total a Pagar:</strong> $${totalAmount.toLocaleString('es-CO')}</p>
         ${data.fecha_pago ? `<p><strong>Fecha de Pago:</strong> ${data.fecha_pago}</p>` : ''}
         <div class="mt-4 flex space-x-2">
-            <button class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-all text-sm download-invoice-btn" data-type="recibo" data-invoice='${JSON.stringify(data)}'>Descargar Recibo</button>
+            <button class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-all text-sm download-invoice-btn" data-type="recibo" data-invoice='${JSON.stringify({ ...data, multa })}'>Descargar Recibo</button>
         </div>
     `;
     invoicesList.appendChild(invoiceItem);
@@ -351,24 +354,15 @@ async function generatePDF(data, type) {
             textColor: 255
         }
     });
-
-    // Calcular el total y la multa
-    let multa = 0;
-    const dueDate = new Date(data.fecha_factura);
-    const paidDate = data.fecha_pago ? new Date(data.fecha_pago) : new Date();
-    if (paidDate > dueDate && data.factura_estado === 'Pagado') {
-        const diffTime = Math.abs(paidDate - dueDate);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        multa = diffDays * 10000;
-    }
-    const total = data.monto_factura + multa;
+    
+    const total = data.monto_factura + data.multa;
 
     // Totales
     doc.setFontSize(12);
     doc.text(`Monto de la Factura: $${data.monto_factura.toLocaleString('es-CO')}`, 140, doc.lastAutoTable.finalY + 10);
-    if (multa > 0) {
+    if (data.multa > 0) {
         doc.setTextColor(200, 0, 0);
-        doc.text(`Multa por Mora: $${multa.toLocaleString('es-CO')}`, 140, doc.lastAutoTable.finalY + 17);
+        doc.text(`Multa por Mora: $${data.multa.toLocaleString('es-CO')}`, 140, doc.lastAutoTable.finalY + 17);
         doc.setTextColor(0);
     }
     if (data.factura_estado === 'Pagado') {
