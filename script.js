@@ -42,10 +42,13 @@ const modalText = document.getElementById('modal-text');
 const closeBtn = document.querySelector('.close-button');
 const userMessage = document.getElementById('user-message');
 const passMessage = document.getElementById('pass-message');
+const addInvoiceButton = document.getElementById('add-invoice-button'); // Nuevo botón
+const saveResidentButton = document.getElementById('save-resident-button'); // Botón de guardar
+const addResidentButton = document.getElementById('add-resident-button'); // Botón de agregar residente
 
 let isEditing = false;
 let currentResidentId = null;
-let currentResidentDocId = null; // Variable para almacenar el ID del documento del residente actual
+let currentResidentDocId = null; 
 
 // Función para mostrar mensajes modales
 function showMessage(message) {
@@ -94,7 +97,6 @@ loginForm.addEventListener('submit', async (e) => {
         }
 
         // Autenticación de residente
-        // Buscar el usuario en Firestore
         const residentsCollection = collection(db, 'residents');
         const q = query(residentsCollection, where("usuario", "==", username));
         const querySnapshot = await getDocs(q);
@@ -107,15 +109,13 @@ loginForm.addEventListener('submit', async (e) => {
         const residentDoc = querySnapshot.docs[0];
         const residentData = residentDoc.data();
         
-        // Verificar la contraseña (comparación simple, en un entorno real usaríamos un hash)
         if (residentData.contrasena === password) {
-            // Simular inicio de sesión de residente
             loginPanel.classList.add('hidden');
             residentPanel.classList.remove('hidden');
             residentNameDisplay.textContent = residentData.nombre;
             residentDeptoDisplay.textContent = residentData.depto;
             renderResidentInvoices(residentData);
-            currentResidentDocId = residentDoc.id; // Guarda el ID del documento
+            currentResidentDocId = residentDoc.id; 
             loginMessage.textContent = '';
         } else {
             loginMessage.textContent = 'Contraseña incorrecta.';
@@ -127,9 +127,15 @@ loginForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Lógica para guardar datos del residente (Admin)
+// Lógica para guardar o agregar datos del residente (Admin)
 residentForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    // Si estamos editando, no hacemos nada con el submit del formulario
+    if (isEditing) {
+        return;
+    }
+
     const depto = residentForm.depto.value;
     const name = residentForm['resident-name'].value;
     const user = residentForm.user.value;
@@ -149,43 +155,15 @@ residentForm.addEventListener('submit', async (e) => {
     };
     
     try {
-        if (isEditing) {
-            // Actualizar documento existente
-            const residentRef = doc(db, 'residents', currentResidentId);
-            const residentDoc = await getDoc(residentRef);
-            const residentData = residentDoc.data();
-            
-            // Si el residente ya tiene facturas, actualiza solo los campos de la factura
-            // Si no, crea la primera factura
-            if (residentData.invoices) {
-                // Actualiza la factura existente (asumiendo que solo se edita una a la vez)
-                // Esta lógica es simple y asume que el usuario quiere editar la última factura
-                // En un sistema real se necesitaría un ID de factura.
-                const updatedInvoices = residentData.invoices;
-                updatedInvoices[updatedInvoices.length - 1] = invoiceData;
-                await updateDoc(residentRef, { invoices: updatedInvoices });
-            } else {
-                // Actualiza los campos principales y agrega la primera factura
-                await updateDoc(residentRef, {
-                    ...invoiceData,
-                    credentials_updated: data.credentials_updated // Mantener el estado de actualización de credenciales
-                });
-            }
-            showMessage('Datos del residente actualizados correctamente.');
-            isEditing = false;
-            currentResidentId = null;
-        } else {
-            // Agregar nuevo documento con una factura inicial
-            await addDoc(collection(db, 'residents'), {
-                depto: depto,
-                nombre: name,
-                usuario: user,
-                contrasena: pass,
-                invoices: [invoiceData],
-                credentials_updated: false // Nuevo campo: false por defecto
-            });
-            showMessage('Residente agregado correctamente.');
-        }
+        await addDoc(collection(db, 'residents'), {
+            depto: depto,
+            nombre: name,
+            usuario: user,
+            contrasena: pass,
+            invoices: [invoiceData],
+            credentials_updated: false
+        });
+        showMessage('Residente agregado correctamente.');
         
         // Limpiar formulario
         residentForm.reset();
@@ -196,14 +174,63 @@ residentForm.addEventListener('submit', async (e) => {
     }
 });
 
+// Lógica para el botón "Agregar Factura"
+addInvoiceButton.addEventListener('click', async () => {
+    if (!isEditing || !currentResidentId) {
+        showMessage('Por favor, selecciona un residente para agregar una factura.');
+        return;
+    }
+
+    const dueDate = residentForm['due-date'].value;
+    const amount = parseFloat(residentForm.amount.value.replace(/\./g, ''));
+    const concept = residentForm.concept.value;
+    const paid = paidStatusCheckbox.checked;
+    const paymentDate = paid ? residentForm['payment-date'].value : null;
+
+    if (!dueDate || !amount || !concept) {
+        showMessage('Por favor, completa todos los campos de la factura.');
+        return;
+    }
+
+    const newInvoice = {
+        fecha_factura: dueDate,
+        monto_factura: amount,
+        factura_estado: paid ? 'Pagado' : 'Pendiente',
+        concepto_factura: concept,
+        fecha_pago: paymentDate
+    };
+
+    try {
+        const residentRef = doc(db, 'residents', currentResidentId);
+        const residentDoc = await getDoc(residentRef);
+        const residentData = residentDoc.data();
+        
+        const updatedInvoices = residentData.invoices ? [...residentData.invoices, newInvoice] : [newInvoice];
+
+        await updateDoc(residentRef, { invoices: updatedInvoices });
+        showMessage('Factura agregada correctamente.');
+        
+        // Limpiar los campos del formulario de la factura
+        residentForm['due-date'].value = '';
+        residentForm.amount.value = '';
+        residentForm.concept.value = '';
+        paidStatusCheckbox.checked = false;
+        paymentDateContainer.classList.add('hidden');
+        residentForm['payment-date'].value = '';
+
+    } catch (e) {
+        console.error("Error al agregar la factura: ", e);
+        showMessage('Error al agregar la factura.');
+    }
+});
+
 // Escuchar cambios en la colección de residentes y renderizar la tabla
 onSnapshot(collection(db, 'residents'), (querySnapshot) => {
-    residentsTableBody.innerHTML = ''; // Limpiar la tabla
+    residentsTableBody.innerHTML = '';
     querySnapshot.forEach((doc) => {
         const data = doc.data();
         const row = document.createElement('tr');
         
-        // Asumiendo que las facturas están en un array, muestra la última factura para la tabla
         const latestInvoice = data.invoices ? data.invoices[data.invoices.length - 1] : {};
 
         row.innerHTML = `
@@ -245,19 +272,11 @@ residentsTableBody.addEventListener('click', async (e) => {
                 residentForm.user.value = data.usuario;
                 residentForm.pass.value = data.contrasena;
 
-                // Lógica para llenar el formulario con la última factura del residente
-                const latestInvoice = data.invoices ? data.invoices[data.invoices.length - 1] : {};
-                residentForm['due-date'].value = latestInvoice.fecha_factura || '';
-                residentForm.amount.value = latestInvoice.monto_factura || '';
-                residentForm.concept.value = latestInvoice.concepto_factura || '';
-                paidStatusCheckbox.checked = latestInvoice.factura_estado === 'Pagado';
-                if (paidStatusCheckbox.checked) {
-                    paymentDateContainer.classList.remove('hidden');
-                    residentForm['payment-date'].value = latestInvoice.fecha_pago || '';
-                } else {
-                    paymentDateContainer.classList.add('hidden');
-                }
-                
+                // Cambiar el texto del botón y mostrar el botón de agregar factura
+                saveResidentButton.textContent = 'Actualizar Datos';
+                addInvoiceButton.classList.remove('hidden');
+                addResidentButton.classList.add('hidden');
+
                 // Lógica para deshabilitar campos si el residente ya los actualizó
                 if (data.credentials_updated) {
                     residentForm.user.setAttribute('disabled', 'true');
@@ -285,7 +304,6 @@ residentsTableBody.addEventListener('click', async (e) => {
 function renderResidentInvoices(data) {
     invoicesList.innerHTML = '';
     
-    // Si no hay facturas, muestra un mensaje
     if (!data.invoices || data.invoices.length === 0) {
         invoicesList.innerHTML = '<p class="text-gray-500">No hay facturas disponibles.</p>';
         return;
@@ -295,17 +313,16 @@ function renderResidentInvoices(data) {
         const invoiceItem = document.createElement('div');
         invoiceItem.classList.add('p-4', 'rounded-lg', 'shadow-md');
         
-        const dueDate = new Date(invoice.fecha_factura + 'T00:00:00'); // Asegura que la hora se establezca a medianoche para una comparación precisa
+        const dueDate = new Date(invoice.fecha_factura + 'T00:00:00'); 
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // Establecer la hora de hoy a medianoche
+        today.setHours(0, 0, 0, 0); 
         
         let multa = 0;
 
-        // Se cambió la lógica de cálculo de multa para que solo aplique si el estado es pendiente
         if (invoice.factura_estado === 'Pendiente' && today > dueDate) {
             const diffTime = Math.abs(today - dueDate);
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-            multa = diffDays * 10000; // Multa de $10.000 por día de retraso
+            multa = diffDays * 10000;
         }
 
         const totalAmount = invoice.monto_factura + multa;
@@ -342,7 +359,6 @@ async function generatePDF(data, type) {
     const doc = new jsPDF();
     const today = new Date().toLocaleDateString('es-CO');
 
-    // Título y detalles de la empresa
     doc.setFontSize(22);
     doc.text('RECIBO DE PAGO', 105, 20, null, null, 'center');
     doc.setFontSize(10);
@@ -355,12 +371,10 @@ async function generatePDF(data, type) {
     doc.setLineWidth(0.5);
     doc.line(20, 45, 190, 45);
 
-    // Detalles del recibo
     doc.setFontSize(12);
     doc.text(`Fecha de Emisión: ${today}`, 20, 55);
     doc.text(`Recibo N°: ${Math.floor(Math.random() * 100000)}`, 140, 55);
 
-    // Sección de Cliente
     doc.setFontSize(16);
     doc.text('Detalles del Residente', 20, 70);
     doc.setLineWidth(0.1);
@@ -371,7 +385,6 @@ async function generatePDF(data, type) {
     doc.text(`Apartamento: ${data.depto}`, 20, 87);
     doc.text(`Usuario: ${data.usuario}`, 20, 94);
 
-    // Sección de Descripción de Pago
     doc.setFontSize(16);
     doc.text('Resumen de la Factura', 20, 110);
     doc.line(20, 112, 80, 112);
@@ -395,7 +408,6 @@ async function generatePDF(data, type) {
     
     const total = data.monto_factura + data.multa;
 
-    // Totales
     doc.setFontSize(12);
     doc.text(`Monto de la Factura: $${data.monto_factura.toLocaleString('es-CO')}`, 140, doc.lastAutoTable.finalY + 10);
     if (data.multa > 0) {
@@ -415,7 +427,6 @@ async function generatePDF(data, type) {
     doc.setFontSize(16);
     doc.text(`TOTAL PAGADO: $${total.toLocaleString('es-CO')}`, 140, doc.lastAutoTable.finalY + 38);
 
-    // Nota final
     doc.setFontSize(10);
     doc.setTextColor(150);
     doc.text('Este es un recibo generado automáticamente. No se requiere firma.', 105, 270, null, null, 'center');
@@ -470,25 +481,21 @@ excelUpload.addEventListener('change', (e) => {
 // Lógica para cambiar credenciales del residente
 changeCredentialsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    // Asegúrate de agregar un campo de entrada para la contraseña antigua en el HTML
     const oldPassword = changeCredentialsForm['old-password'].value; 
     const newUsername = changeCredentialsForm['new-username'].value;
     const newPassword = changeCredentialsForm['new-password'].value;
 
     if (currentResidentDocId) {
         try {
-            // Obtener el documento actual del residente para verificar la contraseña
             const residentDocRef = doc(db, 'residents', currentResidentDocId);
             const residentDoc = await getDoc(residentDocRef);
             const residentData = residentDoc.data();
 
-            // Verificar si la contraseña antigua coincide con la guardada
             if (residentData.contrasena !== oldPassword) {
                 showMessage('La contraseña antigua es incorrecta.');
                 return;
             }
 
-            // Usa el ID del documento guardado para actualizar las credenciales
             await updateDoc(residentDocRef, {
                 usuario: newUsername,
                 contrasena: newPassword,
@@ -508,11 +515,11 @@ changeCredentialsForm.addEventListener('submit', async (e) => {
 logoutButton.addEventListener('click', () => {
     adminPanel.classList.add('hidden');
     loginPanel.classList.remove('hidden');
-    currentResidentDocId = null; // Limpia el ID al cerrar sesión
+    currentResidentDocId = null;
 });
 
 residentLogoutButton.addEventListener('click', () => {
     residentPanel.classList.add('hidden');
     loginPanel.classList.remove('hidden');
-    currentResidentDocId = null; // Limpia el ID al cerrar sesión
+    currentResidentDocId = null;
 });
