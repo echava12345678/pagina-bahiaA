@@ -548,12 +548,14 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const residentDoc = await db.collection('residents').doc(bill.residentId).get();
             const resident = residentDoc.data();
 
-            const today = new Date();
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
                 dueDate.setHours(0, 0, 0, 0);
             }
-            const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
+
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
+                           (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+            
             const multa = isLate ? bill.amount * 0.10 : 0; // 10% late fee
             const finalAmount = bill.amount + multa;
             
