@@ -7,7 +7,7 @@ import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc
 
 // Configuración de Firebase proporcionada por el usuario
 const firebaseConfig = {
-    apiKey: "AIzaSyBQQbZeHBV9thJ0iy3c30k3ERCYvRoDQMM",
+    apiKey: "AIzaSyBQQbZeHBV9thJ0iy3c3c30k3ERCYvRoDQMM",
     authDomain: "bahiaa.firebaseapp.com",
     projectId: "bahiaa",
     storageBucket: "bahiaa.firebasestorage.app",
@@ -131,7 +131,7 @@ residentForm.addEventListener('submit', async (e) => {
     const user = residentForm.user.value;
     const pass = residentForm.pass.value;
     const dueDate = residentForm['due-date'].value;
-    const amount = parseFloat(residentForm.amount.value);
+    const amount = parseFloat(residentForm.amount.value.replace(/\./g, '')); // Modificación para aceptar punto como separador de miles
     const concept = residentForm.concept.value;
     const paid = paidStatusCheckbox.checked;
     const paymentDate = paid ? residentForm['payment-date'].value : null;
@@ -283,34 +283,58 @@ async function generatePDF(data, type) {
     const doc = new jsPDF();
     const today = new Date().toLocaleDateString('es-CO');
 
+    // Título y detalles de la empresa
     doc.setFontSize(22);
-    doc.text('Recibo de Pago', 105, 20, null, null, 'center');
-    doc.setFontSize(12);
-    doc.text(`Edificio Bahia S.A.S`, 105, 30, null, null, 'center');
-    doc.text(`Fecha de Emisión: ${today}`, 105, 40, null, null, 'center');
-    doc.text(`RECIBO N°: ${Math.floor(Math.random() * 100000)}`, 105, 50, null, null, 'center');
-    
-    doc.setLineWidth(0.5);
-    doc.line(20, 55, 190, 55);
-
-    doc.setFontSize(14);
-    doc.text('Detalles del Residente:', 20, 65);
-    doc.setFontSize(12);
-    doc.text(`Nombre: ${data.nombre}`, 20, 75);
-    doc.text(`Apartamento: ${data.depto}`, 20, 85);
-    doc.text(`ID Residente: ${data.usuario}`, 20, 95);
+    doc.text('RECIBO DE PAGO', 105, 20, null, null, 'center');
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text('Edificio Bahia S.A.S', 105, 28, null, null, 'center');
+    doc.text('Calle 123 # 45 - 67, Bogotá, Colombia', 105, 33, null, null, 'center');
+    doc.text('Tel: (1) 555-1234 | Email: contacto@edificiobahia.com', 105, 38, null, null, 'center');
+    doc.setTextColor(0);
 
     doc.setLineWidth(0.5);
-    doc.line(20, 100, 190, 100);
+    doc.line(20, 45, 190, 45);
 
-    doc.setFontSize(14);
-    doc.text('Detalles de la Factura:', 20, 110);
+    // Detalles del recibo
     doc.setFontSize(12);
-    doc.text(`Concepto: ${data.concepto_factura}`, 20, 120);
-    doc.text(`Monto: $${data.monto_factura.toLocaleString('es-CO')}`, 20, 130);
-    doc.text(`Fecha de Vencimiento: ${data.fecha_factura}`, 20, 140);
-    doc.text(`Estado: ${data.factura_estado}`, 20, 150);
+    doc.text(`Fecha de Emisión: ${today}`, 20, 55);
+    doc.text(`Recibo N°: ${Math.floor(Math.random() * 100000)}`, 140, 55);
 
+    // Sección de Cliente
+    doc.setFontSize(16);
+    doc.text('Detalles del Residente', 20, 70);
+    doc.setLineWidth(0.1);
+    doc.line(20, 72, 80, 72);
+
+    doc.setFontSize(12);
+    doc.text(`Nombre: ${data.nombre}`, 20, 80);
+    doc.text(`Apartamento: ${data.depto}`, 20, 87);
+    doc.text(`Usuario: ${data.usuario}`, 20, 94);
+
+    // Sección de Descripción de Pago
+    doc.setFontSize(16);
+    doc.text('Resumen de la Factura', 20, 110);
+    doc.line(20, 112, 80, 112);
+
+    doc.autoTable({
+        startY: 120,
+        head: [['Descripción', 'Vencimiento', 'Monto', 'Estado']],
+        body: [
+            [data.concepto_factura, data.fecha_factura, `$${data.monto_factura.toLocaleString('es-CO')}`, data.factura_estado]
+        ],
+        theme: 'striped',
+        styles: {
+            fontSize: 10,
+            cellPadding: 3
+        },
+        headStyles: {
+            fillColor: [40, 40, 40],
+            textColor: 255
+        }
+    });
+
+    // Calcular el total y la multa
     let multa = 0;
     const dueDate = new Date(data.fecha_factura);
     const paidDate = data.fecha_pago ? new Date(data.fecha_pago) : new Date();
@@ -318,21 +342,33 @@ async function generatePDF(data, type) {
         const diffTime = Math.abs(paidDate - dueDate);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         multa = diffDays * 10000;
-        doc.text(`Multa por Mora: $${multa.toLocaleString('es-CO')}`, 20, 160);
+    }
+    const total = data.monto_factura + multa;
+
+    // Totales
+    doc.setFontSize(12);
+    doc.text(`Monto de la Factura: $${data.monto_factura.toLocaleString('es-CO')}`, 140, doc.lastAutoTable.finalY + 10);
+    if (multa > 0) {
+        doc.setTextColor(200, 0, 0);
+        doc.text(`Multa por Mora: $${multa.toLocaleString('es-CO')}`, 140, doc.lastAutoTable.finalY + 17);
+        doc.setTextColor(0);
     }
     if (data.factura_estado === 'Pagado') {
-        doc.text(`Fecha de Pago: ${data.fecha_pago}`, 20, 170);
+        doc.setTextColor(0, 128, 0);
+        doc.text(`Fecha de Pago: ${data.fecha_pago}`, 140, doc.lastAutoTable.finalY + 24);
+        doc.setTextColor(0);
     }
-
+    
     doc.setLineWidth(0.5);
-    doc.line(20, 180, 190, 180);
-
-    const total = data.monto_factura + multa;
+    doc.line(140, doc.lastAutoTable.finalY + 28, 190, doc.lastAutoTable.finalY + 28);
+    
     doc.setFontSize(16);
-    doc.text(`TOTAL: $${total.toLocaleString('es-CO')}`, 105, 190, null, null, 'center');
+    doc.text(`TOTAL PAGADO: $${total.toLocaleString('es-CO')}`, 140, doc.lastAutoTable.finalY + 38);
 
+    // Nota final
     doc.setFontSize(10);
-    doc.text('Este es un recibo generado automáticamente. No requiere firma.', 105, 270, null, null, 'center');
+    doc.setTextColor(150);
+    doc.text('Este es un recibo generado automáticamente. No se requiere firma.', 105, 270, null, null, 'center');
     
     doc.save(`Recibo_Factura_${data.depto}.pdf`);
 }
@@ -362,7 +398,7 @@ excelUpload.addEventListener('change', (e) => {
                     usuario: row['usuario'],
                     contrasena: row['contrasena'],
                     fecha_factura: row['fecha_factura'] ? new Date(Math.round((row['fecha_factura'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : '',
-                    monto_factura: parseFloat(row['monto_factura']),
+                    monto_factura: parseFloat(String(row['monto_factura']).replace(/\./g, '')), // Modificación para aceptar punto como separador de miles
                     factura_estado: row['factura_estado'],
                     concepto_factura: row['concepto_factura'],
                     fecha_pago: row['fecha_pago'] ? new Date(Math.round((row['fecha_pago'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : null
