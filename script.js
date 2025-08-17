@@ -140,11 +140,7 @@ residentForm.addEventListener('submit', async (e) => {
     const paid = paidStatusCheckbox.checked;
     const paymentDate = paid ? residentForm['payment-date'].value : null;
 
-    const residentData = {
-        depto: depto,
-        nombre: name,
-        usuario: user,
-        contrasena: pass,
+    const invoiceData = {
         fecha_factura: dueDate,
         monto_factura: amount,
         factura_estado: paid ? 'Pagado' : 'Pendiente',
@@ -156,14 +152,36 @@ residentForm.addEventListener('submit', async (e) => {
         if (isEditing) {
             // Actualizar documento existente
             const residentRef = doc(db, 'residents', currentResidentId);
-            await updateDoc(residentRef, residentData);
+            const residentDoc = await getDoc(residentRef);
+            const residentData = residentDoc.data();
+            
+            // Si el residente ya tiene facturas, actualiza solo los campos de la factura
+            // Si no, crea la primera factura
+            if (residentData.invoices) {
+                // Actualiza la factura existente (asumiendo que solo se edita una a la vez)
+                // Esta lógica es simple y asume que el usuario quiere editar la última factura
+                // En un sistema real se necesitaría un ID de factura.
+                const updatedInvoices = residentData.invoices;
+                updatedInvoices[updatedInvoices.length - 1] = invoiceData;
+                await updateDoc(residentRef, { invoices: updatedInvoices });
+            } else {
+                // Actualiza los campos principales y agrega la primera factura
+                await updateDoc(residentRef, {
+                    ...invoiceData,
+                    credentials_updated: data.credentials_updated // Mantener el estado de actualización de credenciales
+                });
+            }
             showMessage('Datos del residente actualizados correctamente.');
             isEditing = false;
             currentResidentId = null;
         } else {
-            // Agregar nuevo documento
+            // Agregar nuevo documento con una factura inicial
             await addDoc(collection(db, 'residents'), {
-                ...residentData,
+                depto: depto,
+                nombre: name,
+                usuario: user,
+                contrasena: pass,
+                invoices: [invoiceData],
                 credentials_updated: false // Nuevo campo: false por defecto
             });
             showMessage('Residente agregado correctamente.');
@@ -184,12 +202,16 @@ onSnapshot(collection(db, 'residents'), (querySnapshot) => {
     querySnapshot.forEach((doc) => {
         const data = doc.data();
         const row = document.createElement('tr');
+        
+        // Asumiendo que las facturas están en un array, muestra la última factura para la tabla
+        const latestInvoice = data.invoices ? data.invoices[data.invoices.length - 1] : {};
+
         row.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap">${data.depto}</td>
             <td class="px-6 py-4 whitespace-nowrap">${data.nombre}</td>
             <td class="px-6 py-4 whitespace-nowrap">${data.usuario}</td>
-            <td class="px-6 py-4 whitespace-nowrap">$${data.monto_factura.toLocaleString('es-CO')}</td>
-            <td class="px-6 py-4 whitespace-nowrap">${data.factura_estado}</td>
+            <td class="px-6 py-4 whitespace-nowrap">$${latestInvoice.monto_factura ? latestInvoice.monto_factura.toLocaleString('es-CO') : 'N/A'}</td>
+            <td class="px-6 py-4 whitespace-nowrap">${latestInvoice.factura_estado || 'N/A'}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <button class="text-indigo-600 hover:text-indigo-900 mr-2 edit-btn" data-id="${doc.id}">Editar</button>
                 <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${doc.id}">Eliminar</button>
@@ -216,17 +238,22 @@ residentsTableBody.addEventListener('click', async (e) => {
             const residentDoc = await getDoc(doc(db, 'residents', residentId));
             if (residentDoc.exists()) {
                 const data = residentDoc.data();
+                
+                // Llena el formulario con los datos del residente
                 residentForm.depto.value = data.depto;
                 residentForm['resident-name'].value = data.nombre;
                 residentForm.user.value = data.usuario;
                 residentForm.pass.value = data.contrasena;
-                residentForm['due-date'].value = data.fecha_factura;
-                residentForm.amount.value = data.monto_factura;
-                residentForm.concept.value = data.concepto_factura;
-                paidStatusCheckbox.checked = data.factura_estado === 'Pagado';
+
+                // Lógica para llenar el formulario con la última factura del residente
+                const latestInvoice = data.invoices ? data.invoices[data.invoices.length - 1] : {};
+                residentForm['due-date'].value = latestInvoice.fecha_factura || '';
+                residentForm.amount.value = latestInvoice.monto_factura || '';
+                residentForm.concept.value = latestInvoice.concepto_factura || '';
+                paidStatusCheckbox.checked = latestInvoice.factura_estado === 'Pagado';
                 if (paidStatusCheckbox.checked) {
                     paymentDateContainer.classList.remove('hidden');
-                    residentForm['payment-date'].value = data.fecha_pago;
+                    residentForm['payment-date'].value = latestInvoice.fecha_pago || '';
                 } else {
                     paymentDateContainer.classList.add('hidden');
                 }
@@ -257,39 +284,48 @@ residentsTableBody.addEventListener('click', async (e) => {
 // Lógica para renderizar facturas de residente
 function renderResidentInvoices(data) {
     invoicesList.innerHTML = '';
-    const invoiceItem = document.createElement('div');
-    invoiceItem.classList.add('p-4', 'rounded-lg', 'shadow-md');
     
-    const dueDate = new Date(data.fecha_factura + 'T00:00:00'); // Asegura que la hora se establezca a medianoche para una comparación precisa
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Establecer la hora de hoy a medianoche
-    
-    let multa = 0;
-
-    // Se cambió la lógica de cálculo de multa para que solo aplique si el estado es pendiente
-    if (data.factura_estado === 'Pendiente' && today > dueDate) {
-        const diffTime = Math.abs(today - dueDate);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        multa = diffDays * 10000; // Multa de $10.000 por día de retraso
+    // Si no hay facturas, muestra un mensaje
+    if (!data.invoices || data.invoices.length === 0) {
+        invoicesList.innerHTML = '<p class="text-gray-500">No hay facturas disponibles.</p>';
+        return;
     }
 
-    const totalAmount = data.monto_factura + multa;
+    data.invoices.forEach(invoice => {
+        const invoiceItem = document.createElement('div');
+        invoiceItem.classList.add('p-4', 'rounded-lg', 'shadow-md');
+        
+        const dueDate = new Date(invoice.fecha_factura + 'T00:00:00'); // Asegura que la hora se establezca a medianoche para una comparación precisa
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Establecer la hora de hoy a medianoche
+        
+        let multa = 0;
 
-    invoiceItem.innerHTML = `
-        <div class="flex justify-between items-center mb-2">
-            <h4 class="text-lg font-bold">${data.concepto_factura}</h4>
-            <span class="px-3 py-1 text-xs font-semibold rounded-full ${data.factura_estado === 'Pagado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}">${data.factura_estado}</span>
-        </div>
-        <p><strong>Monto:</strong> $${data.monto_factura.toLocaleString('es-CO')}</p>
-        <p><strong>Fecha de Vencimiento:</strong> ${data.fecha_factura}</p>
-        ${multa > 0 ? `<p class="text-red-500 font-semibold"><strong>Multa por Mora:</strong> $${multa.toLocaleString('es-CO')}</p>` : ''}
-        <p><strong>Total a Pagar:</strong> $${totalAmount.toLocaleString('es-CO')}</p>
-        ${data.fecha_pago ? `<p><strong>Fecha de Pago:</strong> ${data.fecha_pago}</p>` : ''}
-        <div class="mt-4 flex space-x-2">
-            <button class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-all text-sm download-invoice-btn" data-type="recibo" data-invoice='${JSON.stringify({ ...data, multa })}'>Descargar Recibo</button>
-        </div>
-    `;
-    invoicesList.appendChild(invoiceItem);
+        // Se cambió la lógica de cálculo de multa para que solo aplique si el estado es pendiente
+        if (invoice.factura_estado === 'Pendiente' && today > dueDate) {
+            const diffTime = Math.abs(today - dueDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            multa = diffDays * 10000; // Multa de $10.000 por día de retraso
+        }
+
+        const totalAmount = invoice.monto_factura + multa;
+
+        invoiceItem.innerHTML = `
+            <div class="flex justify-between items-center mb-2">
+                <h4 class="text-lg font-bold">${invoice.concepto_factura}</h4>
+                <span class="px-3 py-1 text-xs font-semibold rounded-full ${invoice.factura_estado === 'Pagado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}">${invoice.factura_estado}</span>
+            </div>
+            <p><strong>Monto:</strong> $${invoice.monto_factura.toLocaleString('es-CO')}</p>
+            <p><strong>Fecha de Vencimiento:</strong> ${invoice.fecha_factura}</p>
+            ${multa > 0 ? `<p class="text-red-500 font-semibold"><strong>Multa por Mora:</strong> $${multa.toLocaleString('es-CO')}</p>` : ''}
+            <p><strong>Total a Pagar:</strong> $${totalAmount.toLocaleString('es-CO')}</p>
+            ${invoice.fecha_pago ? `<p><strong>Fecha de Pago:</strong> ${invoice.fecha_pago}</p>` : ''}
+            <div class="mt-4 flex space-x-2">
+                <button class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-all text-sm download-invoice-btn" data-type="recibo" data-invoice='${JSON.stringify({ ...invoice, multa, nombre: data.nombre, depto: data.depto, usuario: data.usuario })}'>Descargar Recibo</button>
+            </div>
+        `;
+        invoicesList.appendChild(invoiceItem);
+    });
 }
 
 // Lógica de descarga de PDF
@@ -411,11 +447,14 @@ excelUpload.addEventListener('change', (e) => {
                     nombre: row['nombre'],
                     usuario: row['usuario'],
                     contrasena: row['contrasena'],
-                    fecha_factura: row['fecha_factura'] ? new Date(Math.round((row['fecha_factura'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : '',
-                    monto_factura: parseFloat(String(row['monto_factura']).replace(/\./g, '')),
-                    factura_estado: row['factura_estado'],
-                    concepto_factura: row['concepto_factura'],
-                    fecha_pago: row['fecha_pago'] ? new Date(Math.round((row['fecha_pago'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : null
+                    invoices: [{
+                        fecha_factura: row['fecha_factura'] ? new Date(Math.round((row['fecha_factura'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : '',
+                        monto_factura: parseFloat(String(row['monto_factura']).replace(/\./g, '')),
+                        factura_estado: row['factura_estado'],
+                        concepto_factura: row['concepto_factura'],
+                        fecha_pago: row['fecha_pago'] ? new Date(Math.round((row['fecha_pago'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : null
+                    }],
+                    credentials_updated: false
                 };
                 await addDoc(collection(db, 'residents'), residentData);
             }
