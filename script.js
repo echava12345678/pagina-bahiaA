@@ -193,8 +193,8 @@ clearFormButton.addEventListener('click', () => {
     saveOrAddButton.textContent = 'Agregar Residente';
     isEditing = false;
     currentResidentId = null;
-    userMessage.textContent = '';
-    passMessage.textContent = '';
+    if (userMessage) userMessage.textContent = '';
+    if (passMessage) passMessage.textContent = '';
     residentForm.user.removeAttribute('disabled');
     residentForm.pass.removeAttribute('disabled');
 });
@@ -251,13 +251,13 @@ residentsTableBody.addEventListener('click', async (e) => {
                 if (data.credentials_updated) {
                     residentForm.user.setAttribute('disabled', 'true');
                     residentForm.pass.setAttribute('disabled', 'true');
-                    userMessage.textContent = 'El residente ha actualizado sus credenciales.';
-                    passMessage.textContent = 'El residente ha actualizado sus credenciales.';
+                    if (userMessage) userMessage.textContent = 'El residente ha actualizado sus credenciales.';
+                    if (passMessage) passMessage.textContent = 'El residente ha actualizado sus credenciales.';
                 } else {
                     residentForm.user.removeAttribute('disabled');
                     residentForm.pass.removeAttribute('disabled');
-                    userMessage.textContent = '';
-                    passMessage.textContent = '';
+                    if (userMessage) userMessage.textContent = '';
+                    if (passMessage) passMessage.textContent = '';
                 }
 
                 // Cambiar el texto del botón y setear el estado
