@@ -51,7 +51,6 @@ const credentialsSuccess = document.getElementById('credentials-success');
 const loadingSpinner = document.getElementById('loading-spinner');
 const cancelChangeCredentialsBtn = document.getElementById('cancel-change-credentials');
 
-
 // Global variables
 let currentResidentId = null;
 
@@ -81,6 +80,12 @@ function formatDate(timestamp) {
     if (!timestamp || !timestamp.seconds) return '';
     const date = new Date(timestamp.seconds * 1000);
     return date.toLocaleDateString('es-CO');
+}
+
+function parseCurrency(value) {
+    if (typeof value !== 'string') return value;
+    const cleanValue = value.replace(/[$.]/g, '').replace(',', '.');
+    return parseFloat(cleanValue);
 }
 
 // --- Login & Authentication ---
@@ -223,30 +228,6 @@ residentsTableBody.addEventListener('click', (e) => {
     }
 });
 
-// Delete a resident and their bills
-async function deleteResident(residentId) {
-    showSpinner();
-    try {
-        // Delete all bills for the resident
-        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
-        const batch = db.batch();
-        billsSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
-
-        // Delete the resident document
-        await db.collection('residents').doc(residentId).delete();
-        alert('Residente y sus facturas eliminados exitosamente.');
-        loadResidents();
-    } catch (err) {
-        console.error("Error deleting resident:", err);
-        alert('Error al eliminar el residente. Intenta de nuevo.');
-    } finally {
-        hideSpinner();
-    }
-}
-
 // Search functionality
 residentSearch.addEventListener('input', (e) => {
     const filter = e.target.value.toLowerCase();
@@ -268,7 +249,7 @@ billForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const residentId = billForm['bill-resident-id'].value;
     const dueDate = billForm['bill-due-date'].value;
-    const amount = parseFloat(billForm['bill-amount'].value);
+    const amount = parseCurrency(billForm['bill-amount'].value);
     const concept = billForm['bill-concept'].value;
     const status = billForm['bill-status'].value;
     const paymentDate = billForm['bill-payment-date'].value;
