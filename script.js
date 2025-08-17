@@ -51,7 +51,7 @@ const credentialsSuccess = document.getElementById('credentials-success');
 const loadingSpinner = document.getElementById('loading-spinner');
 
 // Global variables
-let currentResidentId;
+let currentResidentId = null;
 
 // --- Utility Functions ---
 
@@ -71,11 +71,8 @@ function hideSpinner() {
 
 function toggleSection(sectionId) {
     const section = document.getElementById(sectionId);
-    const isVisible = section.classList.contains('active');
     document.querySelectorAll('.form-section').forEach(s => s.classList.add('hidden'));
-    if (!isVisible) {
-        section.classList.remove('hidden');
-    }
+    section.classList.toggle('hidden');
 }
 
 function formatDate(timestamp) {
@@ -170,7 +167,7 @@ residentForm.addEventListener('submit', async (e) => {
         alert('Error al agregar residente.');
     } finally {
         hideSpinner();
-        toggleSection('add-resident-form');
+        addResidentFormSection.classList.add('hidden');
     }
 });
 
@@ -209,11 +206,15 @@ async function loadResidents() {
 
 // Handle resident actions (view bills, delete resident)
 residentsTableBody.addEventListener('click', (e) => {
-    if (e.target.classList.contains('view-bills-btn')) {
-        const residentId = e.target.dataset.id;
+    const viewBtn = e.target.closest('.view-bills-btn');
+    const deleteBtn = e.target.closest('.delete-resident-btn');
+
+    if (viewBtn) {
+        const residentId = viewBtn.dataset.id;
+        currentResidentId = residentId; // Store the current resident's ID
         showBillHistory(residentId);
-    } else if (e.target.classList.contains('delete-resident-btn')) {
-        const residentId = e.target.dataset.id;
+    } else if (deleteBtn) {
+        const residentId = deleteBtn.dataset.id;
         if (confirm('¿Estás seguro de que quieres eliminar a este residente y todas sus facturas?')) {
             deleteResident(residentId);
         }
@@ -289,7 +290,7 @@ billForm.addEventListener('submit', async (e) => {
         alert('Error al agregar factura.');
     } finally {
         hideSpinner();
-        toggleSection('add-bill-form');
+        addBillFormSection.classList.add('hidden');
     }
 });
 
@@ -365,25 +366,29 @@ async function showBillHistory(residentId) {
 
     try {
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
-        billsSnapshot.forEach(doc => {
-            const bill = doc.data();
-            const row = billHistoryTableBody.insertRow();
-            row.innerHTML = `
-                <td>${formatDate(bill.dueDate)}</td>
-                <td>$${bill.amount.toFixed(2)}</td>
-                <td>${bill.concept}</td>
-                <td class="status-${bill.status.toLowerCase()}">${bill.status}</td>
-                <td>${formatDate(bill.paymentDate)}</td>
-                <td>
-                    <button class="btn secondary-btn edit-bill-btn" data-id="${doc.id}">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn logout-btn delete-bill-btn" data-id="${doc.id}">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </td>
-            `;
-        });
+        if (billsSnapshot.empty) {
+            billHistoryTableBody.innerHTML = `<tr><td colspan="6">No se encontraron facturas para este residente.</td></tr>`;
+        } else {
+            billsSnapshot.forEach(doc => {
+                const bill = doc.data();
+                const row = billHistoryTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${formatDate(bill.dueDate)}</td>
+                    <td>$${bill.amount.toFixed(2)}</td>
+                    <td>${bill.concept}</td>
+                    <td class="status-${bill.status.toLowerCase()}">${bill.status}</td>
+                    <td>${formatDate(bill.paymentDate)}</td>
+                    <td>
+                        <button class="btn secondary-btn edit-bill-btn" data-id="${doc.id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn logout-btn delete-bill-btn" data-id="${doc.id}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+            });
+        }
         billHistoryModal.classList.add('active');
     } catch (err) {
         console.error("Error loading bills:", err);
@@ -395,20 +400,23 @@ async function showBillHistory(residentId) {
 
 // Edit and Delete bills from modal
 billHistoryModal.addEventListener('click', async (e) => {
-    if (e.target.classList.contains('edit-bill-btn')) {
-        const billId = e.target.dataset.id;
+    const editBtn = e.target.closest('.edit-bill-btn');
+    const deleteBtn = e.target.closest('.delete-bill-btn');
+
+    if (editBtn) {
+        const billId = editBtn.dataset.id;
         showEditBillModal(billId);
-    } else if (e.target.classList.contains('delete-bill-btn')) {
-        const billId = e.target.dataset.id;
+    } else if (deleteBtn) {
+        const billId = deleteBtn.dataset.id;
         if (confirm('¿Estás seguro de que quieres eliminar esta factura?')) {
             showSpinner();
             try {
                 await db.collection('bills').doc(billId).delete();
                 alert('Factura eliminada.');
-                billHistoryModal.classList.remove('active');
-                // Re-open the modal with updated data
-                const residentId = e.target.closest('tr').parentElement.parentElement.parentElement.parentElement.parentElement.querySelector('h3').textContent.match(/\(([^)]+)\)/)[1].trim();
-                showBillHistory(residentId);
+                // We re-load the bills for the current resident to update the table
+                if (currentResidentId) {
+                    showBillHistory(currentResidentId);
+                }
             } catch (err) {
                 console.error("Error deleting bill:", err);
                 alert('Error al eliminar factura.');
@@ -429,7 +437,8 @@ async function showEditBillModal(billId) {
         editBillForm['edit-bill-amount'].value = bill.amount;
         editBillForm['edit-bill-concept'].value = bill.concept;
         editBillForm['edit-bill-status'].value = bill.status;
-        editBillForm['edit-bill-payment-date'].value = bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000).toISOString().slice(0, 10) : '';
+        editBillForm['edit-bill-payment-date'].value = bill.status === 'Pagada' && bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000).toISOString().slice(0, 10) : '';
+        billHistoryModal.classList.remove('active');
         editBillModal.classList.add('active');
     } catch (err) {
         console.error("Error loading bill for edit:", err);
@@ -459,8 +468,9 @@ editBillForm.addEventListener('submit', async (e) => {
         });
         alert('Factura actualizada exitosamente.');
         editBillModal.classList.remove('active');
-        billHistoryModal.classList.remove('active');
-        loadResidents();
+        if (currentResidentId) {
+            showBillHistory(currentResidentId);
+        }
     } catch (err) {
         console.error("Error updating bill:", err);
         alert('Error al actualizar factura.');
@@ -472,6 +482,9 @@ editBillForm.addEventListener('submit', async (e) => {
 document.querySelectorAll('.modal .close-btn, #cancel-edit-bill').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+        if (currentResidentId) {
+             showBillHistory(currentResidentId);
+        }
     });
 });
 
@@ -483,26 +496,30 @@ async function loadResidentBills(residentId) {
     residentBillsTableBody.innerHTML = '';
     try {
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
-        billsSnapshot.forEach(doc => {
-            const bill = doc.data();
-            const today = new Date();
-            const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
-            
-            const row = residentBillsTableBody.insertRow();
-            row.dataset.id = doc.id;
-            row.innerHTML = `
-                <td>${bill.concept}</td>
-                <td>$${bill.amount.toFixed(2)}</td>
-                <td>${formatDate(bill.dueDate)}</td>
-                <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
-                <td>
-                    <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
-                        <i class="fas fa-file-download"></i> Descargar Recibo
-                    </button>
-                </td>
-            `;
-        });
+        if (billsSnapshot.empty) {
+            residentBillsTableBody.innerHTML = `<tr><td colspan="5">No se encontraron facturas pendientes.</td></tr>`;
+        } else {
+            billsSnapshot.forEach(doc => {
+                const bill = doc.data();
+                const today = new Date();
+                const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
+                const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
+                
+                const row = residentBillsTableBody.insertRow();
+                row.dataset.id = doc.id;
+                row.innerHTML = `
+                    <td>${bill.concept}</td>
+                    <td>$${bill.amount.toFixed(2)}</td>
+                    <td>${formatDate(bill.dueDate)}</td>
+                    <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
+                    <td>
+                        <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
+                            <i class="fas fa-file-download"></i> Descargar Recibo
+                        </button>
+                    </td>
+                `;
+            });
+        }
     } catch (err) {
         console.error("Error loading resident bills:", err);
         alert('Error al cargar sus facturas.');
@@ -513,8 +530,9 @@ async function loadResidentBills(residentId) {
 
 // Download receipt as PDF
 residentBillsTableBody.addEventListener('click', async (e) => {
-    if (e.target.classList.contains('download-receipt-btn')) {
-        const billId = e.target.dataset.id;
+    const downloadBtn = e.target.closest('.download-receipt-btn');
+    if (downloadBtn) {
+        const billId = downloadBtn.dataset.id;
         showSpinner();
         try {
             const billDoc = await db.collection('bills').doc(billId).get();
@@ -644,6 +662,10 @@ changeCredentialsFormInner.addEventListener('submit', async (e) => {
             });
             credentialsSuccess.textContent = 'Credenciales actualizadas exitosamente.';
             changeCredentialsFormInner.reset();
+            // Update the welcome message with the new username
+            const updatedResidentDoc = await db.collection('residents').doc(currentResidentId).get();
+            const updatedResident = updatedResidentDoc.data();
+            residentWelcome.textContent = `Bienvenido, ${updatedResident.name}`;
         } else {
             credentialsError.textContent = 'Usuario o contraseña actual incorrectos.';
         }
