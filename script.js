@@ -40,6 +40,8 @@ const residentDeptoDisplay = document.getElementById('resident-depto-display');
 const modal = document.getElementById('message-modal');
 const modalText = document.getElementById('modal-text');
 const closeBtn = document.querySelector('.close-button');
+const userMessage = document.getElementById('user-message');
+const passMessage = document.getElementById('pass-message');
 
 let isEditing = false;
 let currentResidentId = null;
@@ -131,7 +133,7 @@ residentForm.addEventListener('submit', async (e) => {
     const user = residentForm.user.value;
     const pass = residentForm.pass.value;
     const dueDate = residentForm['due-date'].value;
-    const amount = parseFloat(residentForm.amount.value.replace(/\./g, '')); // Modificación para aceptar punto como separador de miles
+    const amount = parseFloat(residentForm.amount.value.replace(/\./g, ''));
     const concept = residentForm.concept.value;
     const paid = paidStatusCheckbox.checked;
     const paymentDate = paid ? residentForm['payment-date'].value : null;
@@ -158,7 +160,10 @@ residentForm.addEventListener('submit', async (e) => {
             currentResidentId = null;
         } else {
             // Agregar nuevo documento
-            await addDoc(collection(db, 'residents'), residentData);
+            await addDoc(collection(db, 'residents'), {
+                ...residentData,
+                credentials_updated: false // Nuevo campo: false por defecto
+            });
             showMessage('Residente agregado correctamente.');
         }
         
@@ -223,6 +228,20 @@ residentsTableBody.addEventListener('click', async (e) => {
                 } else {
                     paymentDateContainer.classList.add('hidden');
                 }
+                
+                // Lógica para deshabilitar campos si el residente ya los actualizó
+                if (data.credentials_updated) {
+                    residentForm.user.setAttribute('disabled', 'true');
+                    residentForm.pass.setAttribute('disabled', 'true');
+                    userMessage.textContent = 'El residente ha actualizado sus credenciales.';
+                    passMessage.textContent = 'El residente ha actualizado sus credenciales.';
+                } else {
+                    residentForm.user.removeAttribute('disabled');
+                    residentForm.pass.removeAttribute('disabled');
+                    userMessage.textContent = '';
+                    passMessage.textContent = '';
+                }
+
                 isEditing = true;
                 currentResidentId = residentId;
             }
@@ -242,7 +261,6 @@ function renderResidentInvoices(data) {
     const dueDate = new Date(data.fecha_factura);
     const today = new Date();
     let multa = 0;
-    const estadoColor = data.factura_estado === 'Pagado' ? 'bg-green-100' : 'bg-red-100';
 
     if (data.factura_estado !== 'Pagado' && today > dueDate) {
         const diffTime = Math.abs(today - dueDate);
@@ -398,7 +416,7 @@ excelUpload.addEventListener('change', (e) => {
                     usuario: row['usuario'],
                     contrasena: row['contrasena'],
                     fecha_factura: row['fecha_factura'] ? new Date(Math.round((row['fecha_factura'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : '',
-                    monto_factura: parseFloat(String(row['monto_factura']).replace(/\./g, '')), // Modificación para aceptar punto como separador de miles
+                    monto_factura: parseFloat(String(row['monto_factura']).replace(/\./g, '')),
                     factura_estado: row['factura_estado'],
                     concepto_factura: row['concepto_factura'],
                     fecha_pago: row['fecha_pago'] ? new Date(Math.round((row['fecha_pago'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : null
@@ -423,19 +441,20 @@ changeCredentialsForm.addEventListener('submit', async (e) => {
 
     if (residentUser) {
         try {
-            await updateEmail(residentUser, newUsername + '@apartment.com'); // Usar un email proxy para auth
-            await updatePassword(residentUser, newPassword);
-            showMessage('Credenciales actualizadas correctamente.');
-            // Actualizar el usuario en Firestore para que el login funcione
+            // Encuentra el documento del residente en Firestore
             const residentsCollection = collection(db, 'residents');
             const q = query(residentsCollection, where("usuario", "==", residentUser.email.split('@')[0]));
             const querySnapshot = await getDocs(q);
+            
             if (!querySnapshot.empty) {
                 const residentDocRef = doc(db, 'residents', querySnapshot.docs[0].id);
+                // Actualiza las credenciales y el nuevo campo
                 await updateDoc(residentDocRef, {
                     usuario: newUsername,
-                    contrasena: newPassword
+                    contrasena: newPassword,
+                    credentials_updated: true
                 });
+                showMessage('Credenciales actualizadas correctamente.');
             }
         } catch (error) {
             console.error("Error al cambiar credenciales: ", error);
