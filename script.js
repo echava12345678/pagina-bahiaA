@@ -480,26 +480,32 @@ editBillForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Separate close event listeners for each modal
-billHistoryModal.querySelector('.close-btn').addEventListener('click', () => {
-    billHistoryModal.classList.remove('active');
-});
 
-editBillModal.querySelector('.close-btn').addEventListener('click', () => {
-    editBillModal.classList.remove('active');
-    if (currentResidentId) {
-        showBillHistory(currentResidentId);
+// --- Solución del Cierre de Modales: Delegación de Eventos ---
+// Un solo listener que maneja todos los cierres y cancelaciones.
+document.body.addEventListener('click', (e) => {
+    // Cierra cualquier modal si el clic fue en un botón con la clase .close-btn
+    const closeBtn = e.target.closest('.close-btn');
+    if (closeBtn) {
+        const modal = closeBtn.closest('.modal');
+        if (modal) {
+            modal.classList.remove('active');
+            // Si el modal de edición se cierra, muestra el de historial nuevamente
+            if (modal.id === 'edit-bill-modal' && currentResidentId) {
+                showBillHistory(currentResidentId);
+            }
+        }
+    }
+    
+    // Cierra cualquier sección de formulario si el clic fue en un botón de cancelación
+    const cancelBtn = e.target.closest('.cancel-btn');
+    if (cancelBtn) {
+        const formSection = cancelBtn.closest('.form-section');
+        if (formSection) {
+            formSection.classList.add('hidden');
+        }
     }
 });
-
-// Add listeners for other cancel buttons if needed
-document.getElementById('cancel-edit-bill').addEventListener('click', () => {
-    editBillModal.classList.remove('active');
-    if (currentResidentId) {
-        showBillHistory(currentResidentId);
-    }
-});
-
 
 // --- Resident Panel Functions ---
 
@@ -686,8 +692,4 @@ changeCredentialsFormInner.addEventListener('submit', async (e) => {
     } finally {
         hideSpinner();
     }
-});
-
-cancelChangeCredentialsBtn.addEventListener('click', () => {
-    changeCredentialsForm.classList.add('hidden');
 });
