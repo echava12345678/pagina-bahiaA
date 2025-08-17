@@ -28,7 +28,7 @@ body {
     background-color: var(--background-color);
     color: var(--text-color);
     line-height: 1.6;
-    min-height: 100vh;
+    /* Elimina el min-height de aquí para evitar conflictos */
 }
 
 /* Global Styles */
@@ -312,11 +312,8 @@ td .btn {
 
 /* Login Page */
 .login-page {
-    display: flex;
-    justify-content: center !important;
-    align-items: center !important;
+    /* El centrado ahora lo maneja la clase .page */
     background: linear-gradient(135deg, var(--primary-color), #85A3D5);
-    min-height: 100vh;
 }
 
 .login-container {
