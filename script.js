@@ -193,12 +193,52 @@ async function loadResidents() {
                     <button class="btn primary-btn view-bills-btn" data-id="${doc.id}">
                         <i class="fas fa-eye"></i> Ver Facturas
                     </button>
+                    <button class="btn logout-btn delete-resident-btn" data-id="${doc.id}">
+                        <i class="fas fa-trash-alt"></i> Eliminar
+                    </button>
                 </td>
             `;
         });
     } catch (err) {
         console.error("Error loading residents:", err);
         alert('Error al cargar residentes.');
+    } finally {
+        hideSpinner();
+    }
+}
+
+// Handle resident actions (view bills, delete resident)
+residentsTableBody.addEventListener('click', (e) => {
+    if (e.target.classList.contains('view-bills-btn')) {
+        const residentId = e.target.dataset.id;
+        showBillHistory(residentId);
+    } else if (e.target.classList.contains('delete-resident-btn')) {
+        const residentId = e.target.dataset.id;
+        if (confirm('¿Estás seguro de que quieres eliminar a este residente y todas sus facturas?')) {
+            deleteResident(residentId);
+        }
+    }
+});
+
+// Delete a resident and their bills
+async function deleteResident(residentId) {
+    showSpinner();
+    try {
+        // Delete all bills for the resident
+        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
+        const batch = db.batch();
+        billsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        // Delete the resident document
+        await db.collection('residents').doc(residentId).delete();
+        alert('Residente y sus facturas eliminados exitosamente.');
+        loadResidents();
+    } catch (err) {
+        console.error("Error deleting resident:", err);
+        alert('Error al eliminar el residente. Intenta de nuevo.');
     } finally {
         hideSpinner();
     }
@@ -316,13 +356,6 @@ excelFile.addEventListener('change', (e) => {
 
 
 // Load bill history for a specific resident
-residentsTableBody.addEventListener('click', (e) => {
-    if (e.target.classList.contains('view-bills-btn')) {
-        const residentId = e.target.dataset.id;
-        showBillHistory(residentId);
-    }
-});
-
 async function showBillHistory(residentId) {
     showSpinner();
     billHistoryTableBody.innerHTML = '';
