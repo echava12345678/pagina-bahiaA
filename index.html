@@ -3,163 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administración de Residentes</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <title>Gestión de Edificio</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body class="bg-gray-100 font-sans">
+<body>
 
-    <div id="login-panel" class="flex flex-col items-center justify-center min-h-screen">
-        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-6 text-center">Iniciar Sesión</h2>
+    <div id="loading-spinner" class="spinner-container">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="login-page" class="page active">
+        <div class="login-container">
+            <h1 class="logo-text"><i class="fas fa-building"></i> Gestión de Edificio</h1>
+            <h2>Iniciar Sesión</h2>
             <form id="login-form">
-                <div class="mb-4">
-                    <label for="login-email" class="block text-gray-700">Email</label>
-                    <input type="email" id="login-email" name="email" class="w-full px-3 py-2 border rounded-md" required>
+                <div class="input-group">
+                    <label for="username-login">Usuario</label>
+                    <input type="text" id="username-login" required>
                 </div>
-                <div class="mb-6">
-                    <label for="login-password" class="block text-gray-700">Contraseña</label>
-                    <input type="password" id="login-password" name="password" class="w-full px-3 py-2 border rounded-md" required>
+                <div class="input-group">
+                    <label for="password-login">Contraseña</label>
+                    <input type="password" id="password-login" required>
                 </div>
-                <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600">Entrar</button>
+                <button type="submit" class="btn primary-btn">Ingresar</button>
             </form>
+            <p id="login-error" class="error-message"></p>
         </div>
     </div>
 
-    <div id="admin-panel" class="hidden container mx-auto p-4 md:p-8">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold">Panel de Administración</h1>
-            <button id="logout-button" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">Salir</button>
-        </div>
-
-        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h2 class="text-xl font-bold mb-4">Agregar / Editar Residente</h2>
-            <form id="resident-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="mb-4">
-                    <label for="depto" class="block text-gray-700">Departamento</label>
-                    <input type="text" id="depto" name="depto" class="w-full px-3 py-2 border rounded-md" required>
-                </div>
-                <div class="mb-4">
-                    <label for="resident-name" class="block text-gray-700">Nombre del Residente</label>
-                    <input type="text" id="resident-name" name="resident-name" class="w-full px-3 py-2 border rounded-md" required>
-                </div>
-                <div class="mb-4">
-                    <label for="user" class="block text-gray-700">Usuario</label>
-                    <input type="text" id="user" name="user" class="w-full px-3 py-2 border rounded-md" required>
-                    <p id="user-message" class="text-sm text-red-500 mt-1"></p>
-                </div>
-                <div class="mb-4">
-                    <label for="pass" class="block text-gray-700">Contraseña</label>
-                    <input type="password" id="pass" name="pass" class="w-full px-3 py-2 border rounded-md" required>
-                    <p id="pass-message" class="text-sm text-red-500 mt-1"></p>
-                </div>
-                <div class="mb-4">
-                    <label for="due-date" class="block text-gray-700">Fecha de Vencimiento de Factura</label>
-                    <input type="date" id="due-date" name="due-date" class="w-full px-3 py-2 border rounded-md" required>
-                </div>
-                <div class="mb-4">
-                    <label for="amount" class="block text-gray-700">Monto de Factura</label>
-                    <input type="text" id="amount" name="amount" class="w-full px-3 py-2 border rounded-md" placeholder="Ej: 500.000,00" required>
-                </div>
-                <div class="mb-4">
-                    <label for="concept" class="block text-gray-700">Concepto de Factura</label>
-                    <input type="text" id="concept" name="concept" class="w-full px-3 py-2 border rounded-md" required>
-                </div>
-                <div class="mb-4 flex items-center">
-                    <input type="checkbox" id="paid-status" name="paid-status" class="mr-2">
-                    <label for="paid-status" class="text-gray-700">Estado de pago (Pagado)</label>
-                </div>
-                <div id="payment-date-container" class="mb-4 hidden">
-                    <label for="payment-date" class="block text-gray-700">Fecha de Pago</label>
-                    <input type="date" id="payment-date" name="payment-date" class="w-full px-3 py-2 border rounded-md">
-                </div>
-                <div class="flex items-end gap-2 mt-4 col-span-1 md:col-span-2 lg:col-span-3">
-                    <button type="submit" id="save-or-add-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Guardar Residente</button>
-                    <button type="button" id="clear-form-button" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Limpiar Formulario</button>
-                </div>
-            </form>
-        </div>
-
-        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h2 class="text-xl font-bold mb-4">Cargar datos desde Excel</h2>
-            <div class="flex items-center space-x-4">
-                <input type="file" id="excel-upload" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                <p id="excel-message" class="text-sm text-gray-600"></p>
-            </div>
-        </div>
-
-        <div class="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-            <h2 class="text-xl font-bold mb-4">Residentes del Edificio</h2>
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depto</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último Monto</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="residents-table-body" class="bg-white divide-y divide-gray-200">
-                    </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="resident-panel" class="hidden container mx-auto p-4 md:p-8">
-        <div class="flex justify-between items-center mb-6">
-            <div class="text-xl font-bold">
-                <p>Bienvenido, <span id="resident-name-display"></span></p>
-                <p>Apartamento <span id="resident-depto-display"></span></p>
-            </div>
-            <button id="resident-logout-button" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">Salir</button>
-        </div>
-
-        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h2 class="text-xl font-bold mb-4">Mis Facturas</h2>
-            <div id="invoices-list" class="space-y-4">
-                </div>
-        </div>
-
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-xl font-bold mb-4">Cambiar Credenciales</h2>
-            <form id="change-credentials-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="mb-4">
-                    <label for="old-password" class="block text-gray-700">Contraseña Antigua</label>
-                    <input type="password" id="old-password" name="old-password" class="w-full px-3 py-2 border rounded-md" required>
-                </div>
-                <div class="mb-4">
-                    <label for="new-username" class="block text-gray-700">Nuevo Usuario</label>
-                    <input type="text" id="new-username" name="new-username" class="w-full px-3 py-2 border rounded-md" required>
-                </div>
-                <div class="mb-4">
-                    <label for="new-password" class="block text-gray-700">Nueva Contraseña</label>
-                    <input type="password" id="new-password" name="new-password" class="w-full px-3 py-2 border rounded-md" required>
-                </div>
-                <button type="submit" class="md:col-span-2 bg-green-500 text-white py-2 rounded-md hover:bg-green-600">Actualizar Credenciales</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="message-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3 text-center">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Mensaje</h3>
-                <div class="mt-2 px-7 py-3">
-                    <p id="modal-text" class="text-sm text-gray-500"></p>
-                </div>
-                <div class="items-center px-4 py-3">
-                    <button class="close-button px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        Cerrar
-                    </button>
+    <div id="admin-panel" class="page">
+        <header>
+            <div class="header-content">
+                <h1 class="logo-text"><i class="fas fa-tools"></i> Panel de Administración</h1>
+                <div class="user-info">
+                    <span id="admin-welcome">Bienvenido, Admin</span>
+                    <button id="logout-btn" class="btn logout-btn"><i class="fas fa-sign-out-alt"></i> Salir</button>
                 </div>
             </div>
+        </header>
+
+        <div class="panel-container">
+            <div id="admin-dashboard">
+                <section class="admin-section">
+                    <h2 class="section-title"><i class="fas fa-users-cog"></i> Gestión de Residentes</h2>
+                    <div class="action-buttons">
+                        <button id="show-add-resident-form" class="btn primary-btn"><i class="fas fa-user-plus"></i> Agregar Residente</button>
+                    </div>
+
+                    <div id="add-resident-form" class="form-section hidden">
+                        <h3>Agregar Nuevo Residente</h3>
+                        <form id="resident-form">
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="resident-id">ID Residente</label>
+                                    <input type="text" id="resident-id" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="resident-name">Nombre</label>
+                                    <input type="text" id="resident-name" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="resident-depto">Departamento</label>
+                                    <input type="text" id="resident-depto" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="resident-username">Usuario (Inicial)</label>
+                                    <input type="text" id="resident-username" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="resident-password">Contraseña (Inicial)</label>
+                                    <input type="password" id="resident-password" required>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn primary-btn">Crear Residente</button>
+                                <button type="button" id="cancel-add-resident" class="btn secondary-btn">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+                
+                <section class="admin-section">
+                    <h2 class="section-title"><i class="fas fa-file-invoice-dollar"></i> Cargar Facturas</h2>
+                    <div class="action-buttons">
+                        <button id="show-upload-bills" class="btn primary-btn"><i class="fas fa-upload"></i> Cargar por Excel</button>
+                        <button id="show-add-bill-form" class="btn primary-btn"><i class="fas fa-plus-circle"></i> Agregar Manualmente</button>
+                    </div>
+
+                    <div id="upload-bills-section" class="form-section hidden">
+                        <h3>Cargar Facturas por Excel</h3>
+                        <input type="file" id="excel-file" accept=".xlsx, .xls">
+                        <p class="instruction-text">
+                            Asegúrate de que tu archivo Excel tenga las siguientes columnas en la primera fila: 
+                            <br>
+                            **id_residente, fecha_vencimiento, monto, estado, concepto, fecha_pago**
+                        </p>
+                    </div>
+                    
+                    <div id="add-bill-form" class="form-section hidden">
+                        <h3>Agregar Factura Manualmente</h3>
+                        <form id="bill-form">
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="bill-resident-id">ID Residente</label>
+                                    <input type="text" id="bill-resident-id" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-due-date">Fecha de Vencimiento</label>
+                                    <input type="date" id="bill-due-date" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-amount">Monto ($)</label>
+                                    <input type="number" id="bill-amount" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="bill-concept">Concepto</label>
+                                    <input type="text" id="bill-concept" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-status">Estado</label>
+                                    <select id="bill-status" required>
+                                        <option value="Pendiente">Pendiente</option>
+                                        <option value="Pagada">Pagada</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-payment-date">Fecha de Pago</label>
+                                    <input type="date" id="bill-payment-date">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn primary-btn">Agregar Factura</button>
+                                <button type="button" id="cancel-add-bill" class="btn secondary-btn">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+                
+                <section class="admin-section">
+                    <h2 class="section-title"><i class="fas fa-list-alt"></i> Facturas y Residentes</h2>
+                    <div class="table-container">
+                        <input type="text" id="resident-search" class="search-input" placeholder="Buscar por ID, nombre o departamento...">
+                        <table id="residents-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Departamento</th>
+                                    <th>Usuario</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <div id="bill-history-modal" class="modal">
+                    <div class="modal-content">
+                        <span class="close-btn">&times;</span>
+                        <h3 id="modal-title">Historial de Facturas</h3>
+                        <div class="modal-body">
+                            <table id="bill-history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha Venc.</th>
+                                        <th>Monto</th>
+                                        <th>Concepto</th>
+                                        <th>Estado</th>
+                                        <th>Fecha Pago</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="edit-bill-modal" class="modal">
+                    <div class="modal-content">
+                        <span class="close-btn">&times;</span>
+                        <h3>Editar Factura</h3>
+                        <form id="edit-bill-form">
+                            <div class="form-row">
+                                <input type="hidden" id="edit-bill-id">
+                                <div class="input-group">
+                                    <label for="edit-bill-due-date">Fecha de Vencimiento</label>
+                                    <input type="date" id="edit-bill-due-date" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="edit-bill-amount">Monto ($)</label>
+                                    <input type="number" id="edit-bill-amount" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="edit-bill-concept">Concepto</label>
+                                    <input type="text" id="edit-bill-concept" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="edit-bill-status">Estado</label>
+                                    <select id="edit-bill-status" required>
+                                        <option value="Pendiente">Pendiente</option>
+                                        <option value="Pagada">Pagada</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="edit-bill-payment-date">Fecha de Pago</label>
+                                    <input type="date" id="edit-bill-payment-date">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn primary-btn">Guardar Cambios</button>
+                                <button type="button" id="cancel-edit-bill" class="btn secondary-btn">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script type="module" src="script.js"></script>
+    <div id="resident-panel" class="page">
+        <header>
+            <div class="header-content">
+                <h1 class="logo-text"><i class="fas fa-home"></i> Panel de Residente</h1>
+                <div class="user-info">
+                    <span id="resident-welcome"></span>
+                    <button id="resident-logout-btn" class="btn logout-btn"><i class="fas fa-sign-out-alt"></i> Salir</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="panel-container">
+            <section class="resident-section">
+                <h2 class="section-title"><i class="fas fa-file-invoice"></i> Mis Facturas</h2>
+                <div class="table-container">
+                    <table id="resident-bills-table">
+                        <thead>
+                            <tr>
+                                <th>Concepto</th>
+                                <th>Monto</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="resident-section">
+                <h2 class="section-title"><i class="fas fa-key"></i> Gestionar Credenciales</h2>
+                <button id="show-change-password-form" class="btn primary-btn"><i class="fas fa-edit"></i> Cambiar Usuario y Contraseña</button>
+                <div id="change-credentials-form" class="form-section hidden">
+                    <h3>Cambiar Usuario y Contraseña</h3>
+                    <form id="change-credentials-form-inner">
+                        <div class="input-group">
+                            <label for="old-username">Usuario Actual</label>
+                            <input type="text" id="old-username" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="old-password">Contraseña Actual</label>
+                            <input type="password" id="old-password" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="new-username">Nuevo Usuario</label>
+                            <input type="text" id="new-username" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="new-password">Nueva Contraseña</label>
+                            <input type="password" id="new-password" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn primary-btn">Guardar Cambios</button>
+                            <button type="button" id="cancel-change-credentials" class="btn secondary-btn">Cancelar</button>
+                        </div>
+                    </form>
+                    <p id="credentials-error" class="error-message"></p>
+                    <p id="credentials-success" class="success-message"></p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+    <script src="script.js"></script>
+
 </body>
 </html>
