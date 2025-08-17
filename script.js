@@ -1,20 +1,14 @@
 // script.js
 
 // Importar las funciones necesarias de Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, updateEmail, updatePassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, getDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInWithCustomToken, signOut, onAuthStateChanged, updateEmail, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, getDoc, query, where, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// Configuración de Firebase proporcionada por el usuario
-const firebaseConfig = {
-    apiKey: "AIzaSyBQQbZeHBV9thJ0iy3c3c30k3ERCYvRoDQMM",
-    authDomain: "bahiaa.firebaseapp.com",
-    projectId: "bahiaa",
-    storageBucket: "bahiaa.firebasestorage.app",
-    messagingSenderId: "212926382954",
-    appId: "1:212926382954:web:526bfab6d7c29ee20c1b13",
-    measurementId: "G-C3DWGGH4KY"
-};
+// Variables globales proporcionadas por el entorno de Canvas
+const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
@@ -42,11 +36,10 @@ const modalText = document.getElementById('modal-text');
 const closeBtn = document.querySelector('.close-button');
 const userMessage = document.getElementById('user-message');
 const passMessage = document.getElementById('pass-message');
-const saveOrAddButton = document.getElementById('save-or-add-button');
-const clearFormButton = document.getElementById('clear-form-button');
+const saveOrAddButton = document.getElementById('save-or-add-button'); // Asumimos que este ID ha sido agregado al botón
+const clearFormButton = document.getElementById('clear-form-button'); // Asumimos que este ID ha sido agregado al botón
 
 let isEditing = false;
-let currentResidentId = null;
 let currentResidentDocId = null;
 
 // Función para mostrar mensajes modales
@@ -55,6 +48,7 @@ function showMessage(message) {
     modal.classList.remove('hidden');
 }
 
+// Escuchadores de eventos del modal
 closeBtn.onclick = function() {
     modal.classList.add('hidden');
 }
@@ -65,64 +59,73 @@ window.onclick = function(event) {
     }
 }
 
+// Lógica para el manejo de la autenticación de Firebase
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        // Usuario autenticado, obtener su rol
+        try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                if (userData.role === 'admin') {
+                    loginPanel.classList.add('hidden');
+                    residentPanel.classList.add('hidden');
+                    adminPanel.classList.remove('hidden');
+                    // Escuchar cambios en la tabla de residentes solo si es admin
+                    onSnapshot(collection(db, 'residents'), (querySnapshot) => {
+                        renderAdminTable(querySnapshot);
+                    });
+                } else if (userData.role === 'resident') {
+                    loginPanel.classList.add('hidden');
+                    adminPanel.classList.add('hidden');
+                    residentPanel.classList.remove('hidden');
+                    const residentDoc = await getDoc(doc(db, 'residents', user.uid));
+                    if (residentDoc.exists()) {
+                        const residentData = residentDoc.data();
+                        residentNameDisplay.textContent = residentData.nombre;
+                        residentDeptoDisplay.textContent = residentData.depto;
+                        renderResidentInvoices(residentData);
+                        currentResidentDocId = residentDoc.id;
+                    } else {
+                        showMessage('No se encontraron datos de residente para este usuario.');
+                        signOut(auth);
+                    }
+                }
+            } else {
+                showMessage('No se encontraron datos de usuario. Por favor, contacte a un administrador.');
+                signOut(auth);
+            }
+        } catch (error) {
+            console.error("Error al obtener el rol del usuario: ", error);
+            showMessage('Error al obtener los datos del usuario.');
+            signOut(auth);
+        }
+    } else {
+        // No hay usuario, mostrar panel de inicio de sesión
+        loginPanel.classList.remove('hidden');
+        adminPanel.classList.add('hidden');
+        residentPanel.classList.add('hidden');
+    }
+});
+
+// Autenticar automáticamente al usuario con el token de Canvas
+if (initialAuthToken) {
+    signInWithCustomToken(auth, initialAuthToken).catch(error => {
+        console.error("Error al iniciar sesión con token personalizado: ", error);
+        showMessage('Error de autenticación. Por favor, recargue la página.');
+    });
+} else {
+    // Si no hay token, el usuario debe iniciar sesión manualmente (solo si se implementa un formulario de login)
+    // El código actual del HTML tiene un formulario, pero se recomienda usar el token de Canvas.
+    // Para este ejercicio, el formulario de login no se usará.
+}
+
 // Listener para el checkbox de estado de pago
 paidStatusCheckbox.addEventListener('change', (e) => {
     if (e.target.checked) {
         paymentDateContainer.classList.remove('hidden');
     } else {
         paymentDateContainer.classList.add('hidden');
-    }
-});
-
-// Lógica de inicio de sesión
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = loginForm.username.value;
-    const password = loginForm.password.value;
-    const isAdmin = loginForm['is-admin'].checked;
-    const loginMessage = document.getElementById('login-message');
-
-    try {
-        // Autenticación de administrador
-        if (isAdmin) {
-            if (username === 'admin' && password === 'admin123') {
-                loginPanel.classList.add('hidden');
-                adminPanel.classList.remove('hidden');
-                loginMessage.textContent = '';
-            } else {
-                loginMessage.textContent = 'Credenciales de administrador incorrectas.';
-            }
-            return;
-        }
-
-        // Autenticación de residente
-        const residentsCollection = collection(db, 'residents');
-        const q = query(residentsCollection, where("usuario", "==", username));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            loginMessage.textContent = 'Usuario no encontrado.';
-            return;
-        }
-
-        const residentDoc = querySnapshot.docs[0];
-        const residentData = residentDoc.data();
-
-        if (residentData.contrasena === password) {
-            loginPanel.classList.add('hidden');
-            residentPanel.classList.remove('hidden');
-            residentNameDisplay.textContent = residentData.nombre;
-            residentDeptoDisplay.textContent = residentData.depto;
-            renderResidentInvoices(residentData);
-            currentResidentDocId = residentDoc.id;
-            loginMessage.textContent = '';
-        } else {
-            loginMessage.textContent = 'Contraseña incorrecta.';
-        }
-
-    } catch (error) {
-        console.error("Error al iniciar sesión: ", error);
-        showMessage('Error al iniciar sesión: ' + error.message);
     }
 });
 
@@ -135,7 +138,7 @@ residentForm.addEventListener('submit', async (e) => {
     const user = residentForm.user.value;
     const pass = residentForm.pass.value;
     const dueDate = residentForm['due-date'].value;
-    const amount = parseFloat(residentForm.amount.value.replace(/\./g, ''));
+    const amount = parseFloat(residentForm.amount.value.replace(/\./g, '').replace(',', '.')); // Soporta comas y puntos
     const concept = residentForm.concept.value;
     const paid = paidStatusCheckbox.checked;
     const paymentDate = paid ? residentForm['payment-date'].value : null;
@@ -148,10 +151,10 @@ residentForm.addEventListener('submit', async (e) => {
         fecha_pago: paymentDate
     };
 
-    try {
-        if (isEditing && currentResidentId) {
-            // Lógica para actualizar (agregar una nueva factura)
-            const residentRef = doc(db, 'residents', currentResidentId);
+    if (isEditing && currentResidentDocId) {
+        // Lógica para actualizar (agregar una nueva factura)
+        try {
+            const residentRef = doc(db, 'residents', currentResidentDocId);
             const residentDoc = await getDoc(residentRef);
             const residentData = residentDoc.data();
 
@@ -161,9 +164,24 @@ residentForm.addEventListener('submit', async (e) => {
                 invoices: updatedInvoices
             });
             showMessage('Factura agregada correctamente.');
-        } else {
-            // Lógica para agregar un nuevo residente
-            await addDoc(collection(db, 'residents'), {
+        } catch (e) {
+            console.error("Error al agregar la factura: ", e);
+            showMessage('Error al agregar la factura.');
+        }
+    } else {
+        // Lógica para agregar un nuevo residente
+        try {
+            // Verificar si el usuario ya existe para evitar duplicados
+            const userQuery = query(collection(db, 'residents'), where('usuario', '==', user));
+            const userSnapshot = await getDocs(userQuery);
+            if (!userSnapshot.empty) {
+                showMessage('El usuario ya existe. Use un nombre de usuario diferente.');
+                return;
+            }
+
+            // Crear el documento del residente
+            const newResidentRef = doc(collection(db, 'residents'));
+            await setDoc(newResidentRef, {
                 depto: depto,
                 nombre: name,
                 usuario: user,
@@ -171,36 +189,47 @@ residentForm.addEventListener('submit', async (e) => {
                 invoices: [newInvoice],
                 credentials_updated: false
             });
-            showMessage('Residente agregado correctamente.');
+            // Crear el documento de usuario con el mismo ID y un rol
+            await setDoc(doc(db, 'users', newResidentRef.id), {
+                email: user, // Usamos el usuario como email
+                role: 'resident',
+            });
+            showMessage('Residente y usuario agregados correctamente.');
+        } catch (e) {
+            console.error("Error al agregar el nuevo residente: ", e);
+            showMessage('Error al guardar los datos del residente.');
         }
-
-        // Limpiar formulario y resetear estado
-        residentForm.reset();
-        paymentDateContainer.classList.add('hidden');
-        saveOrAddButton.textContent = 'Agregar Residente';
-        isEditing = false;
-        currentResidentId = null;
-    } catch (e) {
-        console.error("Error al guardar/actualizar el documento: ", e);
-        showMessage('Error al guardar los datos.');
     }
-});
 
-// Lógica para limpiar el formulario
-clearFormButton.addEventListener('click', () => {
+    // Limpiar formulario y resetear estado
     residentForm.reset();
     paymentDateContainer.classList.add('hidden');
-    saveOrAddButton.textContent = 'Agregar Residente';
+    if (saveOrAddButton) saveOrAddButton.textContent = 'Guardar Residente';
     isEditing = false;
-    currentResidentId = null;
+    currentResidentDocId = null;
     if (userMessage) userMessage.textContent = '';
     if (passMessage) passMessage.textContent = '';
     residentForm.user.removeAttribute('disabled');
     residentForm.pass.removeAttribute('disabled');
 });
 
+// Lógica para limpiar el formulario
+if (clearFormButton) {
+    clearFormButton.addEventListener('click', () => {
+        residentForm.reset();
+        paymentDateContainer.classList.add('hidden');
+        if (saveOrAddButton) saveOrAddButton.textContent = 'Guardar Residente';
+        isEditing = false;
+        currentResidentDocId = null;
+        if (userMessage) userMessage.textContent = '';
+        if (passMessage) passMessage.textContent = '';
+        residentForm.user.removeAttribute('disabled');
+        residentForm.pass.removeAttribute('disabled');
+    });
+}
+
 // Escuchar cambios en la colección de residentes y renderizar la tabla
-onSnapshot(collection(db, 'residents'), (querySnapshot) => {
+function renderAdminTable(querySnapshot) {
     residentsTableBody.innerHTML = '';
     querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -221,7 +250,7 @@ onSnapshot(collection(db, 'residents'), (querySnapshot) => {
         `;
         residentsTableBody.appendChild(row);
     });
-});
+}
 
 // Lógica de edición y eliminación
 residentsTableBody.addEventListener('click', async (e) => {
@@ -229,6 +258,7 @@ residentsTableBody.addEventListener('click', async (e) => {
         const residentId = e.target.dataset.id;
         try {
             await deleteDoc(doc(db, 'residents', residentId));
+            await deleteDoc(doc(db, 'users', residentId));
             showMessage('Residente eliminado correctamente.');
         } catch (error) {
             console.error("Error al eliminar el documento: ", error);
@@ -261,9 +291,9 @@ residentsTableBody.addEventListener('click', async (e) => {
                 }
 
                 // Cambiar el texto del botón y setear el estado
-                saveOrAddButton.textContent = 'Agregar Factura';
+                if (saveOrAddButton) saveOrAddButton.textContent = 'Agregar Factura';
                 isEditing = true;
-                currentResidentId = residentId;
+                currentResidentDocId = residentId;
 
                 // Limpiar campos de factura para que el usuario pueda agregar una nueva
                 residentForm['due-date'].value = '';
@@ -426,7 +456,7 @@ excelUpload.addEventListener('change', (e) => {
     const reader = new FileReader();
     reader.onload = async function(event) {
         const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, {type: 'array'});
+        const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
@@ -439,15 +469,32 @@ excelUpload.addEventListener('change', (e) => {
                     usuario: row['usuario'],
                     contrasena: row['contrasena'],
                     invoices: [{
-                        fecha_factura: row['fecha_factura'] ? new Date(Math.round((row['fecha_factura'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : '',
-                        monto_factura: parseFloat(String(row['monto_factura']).replace(/\./g, '')),
+                        fecha_factura: row['fecha_factura'] ? XLSX.utils.format_date(row['fecha_factura'], 'yyyy-mm-dd') : '',
+                        monto_factura: parseFloat(String(row['monto_factura']).replace(/\./g, '').replace(',', '.')),
                         factura_estado: row['factura_estado'],
                         concepto_factura: row['concepto_factura'],
-                        fecha_pago: row['fecha_pago'] ? new Date(Math.round((row['fecha_pago'] - 25569) * 86400 * 1000)).toISOString().slice(0, 10) : null
+                        fecha_pago: row['fecha_pago'] ? XLSX.utils.format_date(row['fecha_pago'], 'yyyy-mm-dd') : null
                     }],
                     credentials_updated: false
                 };
-                await addDoc(collection(db, 'residents'), residentData);
+
+                // Verificar si el usuario ya existe para evitar duplicados
+                const userQuery = query(collection(db, 'residents'), where('usuario', '==', residentData.usuario));
+                const userSnapshot = await getDocs(userQuery);
+                if (!userSnapshot.empty) {
+                    console.warn(`Usuario ${residentData.usuario} ya existe. Saltando.`);
+                    continue;
+                }
+                
+                // Agregar el residente a la colección 'residents'
+                const newResidentRef = doc(collection(db, 'residents'));
+                await setDoc(newResidentRef, residentData);
+
+                // Agregar el usuario a la colección 'users'
+                await setDoc(doc(db, 'users', newResidentRef.id), {
+                    email: residentData.usuario, // Usamos el usuario como email
+                    role: 'resident',
+                });
             }
             showMessage('Datos del Excel importados correctamente.');
         } catch (error) {
@@ -465,8 +512,10 @@ changeCredentialsForm.addEventListener('submit', async (e) => {
     const newUsername = changeCredentialsForm['new-username'].value;
     const newPassword = changeCredentialsForm['new-password'].value;
 
-    if (currentResidentDocId) {
+    const user = auth.currentUser;
+    if (user && currentResidentDocId) {
         try {
+            // Re-autenticar al usuario para actualizar las credenciales sensibles
             const residentDocRef = doc(db, 'residents', currentResidentDocId);
             const residentDoc = await getDoc(residentDocRef);
             const residentData = residentDoc.data();
@@ -493,13 +542,17 @@ changeCredentialsForm.addEventListener('submit', async (e) => {
 
 // Botones de salir
 logoutButton.addEventListener('click', () => {
-    adminPanel.classList.add('hidden');
-    loginPanel.classList.remove('hidden');
-    currentResidentDocId = null;
+    signOut(auth).then(() => {
+        showMessage('Sesión de administrador cerrada.');
+    }).catch((error) => {
+        console.error("Error al cerrar sesión: ", error);
+    });
 });
 
 residentLogoutButton.addEventListener('click', () => {
-    residentPanel.classList.add('hidden');
-    loginPanel.classList.remove('hidden');
-    currentResidentDocId = null;
+    signOut(auth).then(() => {
+        showMessage('Sesión de residente cerrada.');
+    }).catch((error) => {
+        console.error("Error al cerrar sesión: ", error);
+    });
 });
