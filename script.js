@@ -42,7 +42,7 @@ const modalText = document.getElementById('modal-text');
 const closeBtn = document.querySelector('.close-button');
 const userMessage = document.getElementById('user-message');
 const passMessage = document.getElementById('pass-message');
-const saveOrAddButton = document.getElementById('save-or-add-button'); // Botón unificado
+const saveOrAddButton = document.getElementById('save-or-add-button');
 const clearFormButton = document.getElementById('clear-form-button');
 
 let isEditing = false;
@@ -149,7 +149,7 @@ residentForm.addEventListener('submit', async (e) => {
     };
 
     try {
-        if (isEditing) {
+        if (isEditing && currentResidentId) {
             // Lógica para actualizar (agregar una nueva factura)
             const residentRef = doc(db, 'residents', currentResidentId);
             const residentDoc = await getDoc(residentRef);
@@ -193,6 +193,10 @@ clearFormButton.addEventListener('click', () => {
     saveOrAddButton.textContent = 'Agregar Residente';
     isEditing = false;
     currentResidentId = null;
+    userMessage.textContent = '';
+    passMessage.textContent = '';
+    residentForm.user.removeAttribute('disabled');
+    residentForm.pass.removeAttribute('disabled');
 });
 
 // Escuchar cambios en la colección de residentes y renderizar la tabla
