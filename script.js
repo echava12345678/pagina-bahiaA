@@ -45,6 +45,7 @@ const passMessage = document.getElementById('pass-message');
 
 let isEditing = false;
 let currentResidentId = null;
+let currentResidentDocId = null; // Variable para almacenar el ID del documento del residente actual
 
 // Función para mostrar mensajes modales
 function showMessage(message) {
@@ -114,6 +115,7 @@ loginForm.addEventListener('submit', async (e) => {
             residentNameDisplay.textContent = residentData.nombre;
             residentDeptoDisplay.textContent = residentData.depto;
             renderResidentInvoices(residentData);
+            currentResidentDocId = residentDoc.id; // Guarda el ID del documento
             loginMessage.textContent = '';
         } else {
             loginMessage.textContent = 'Contraseña incorrecta.';
@@ -431,25 +433,17 @@ changeCredentialsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const newUsername = changeCredentialsForm['new-username'].value;
     const newPassword = changeCredentialsForm['new-password'].value;
-    const residentUser = auth.currentUser;
 
-    if (residentUser) {
+    if (currentResidentDocId) {
         try {
-            // Encuentra el documento del residente en Firestore
-            const residentsCollection = collection(db, 'residents');
-            const q = query(residentsCollection, where("usuario", "==", residentUser.email.split('@')[0]));
-            const querySnapshot = await getDocs(q);
-            
-            if (!querySnapshot.empty) {
-                const residentDocRef = doc(db, 'residents', querySnapshot.docs[0].id);
-                // Actualiza las credenciales y el nuevo campo
-                await updateDoc(residentDocRef, {
-                    usuario: newUsername,
-                    contrasena: newPassword,
-                    credentials_updated: true
-                });
-                showMessage('Credenciales actualizadas correctamente.');
-            }
+            // Usa el ID del documento guardado para actualizar las credenciales
+            const residentDocRef = doc(db, 'residents', currentResidentDocId);
+            await updateDoc(residentDocRef, {
+                usuario: newUsername,
+                contrasena: newPassword,
+                credentials_updated: true
+            });
+            showMessage('Credenciales actualizadas correctamente.');
         } catch (error) {
             console.error("Error al cambiar credenciales: ", error);
             showMessage('Error al cambiar las credenciales.');
@@ -463,9 +457,11 @@ changeCredentialsForm.addEventListener('submit', async (e) => {
 logoutButton.addEventListener('click', () => {
     adminPanel.classList.add('hidden');
     loginPanel.classList.remove('hidden');
+    currentResidentDocId = null; // Limpia el ID al cerrar sesión
 });
 
 residentLogoutButton.addEventListener('click', () => {
     residentPanel.classList.add('hidden');
     loginPanel.classList.remove('hidden');
+    currentResidentDocId = null; // Limpia el ID al cerrar sesión
 });
