@@ -459,3 +459,8 @@ td .btn {
         gap: 10px;
     }
 }
+
+.logo-image {
+    height: 30px; /* Ajusta este valor al tamaño que desees para el logo */
+    margin-right: 10px; /* Espacio entre el logo y el texto */
+}
