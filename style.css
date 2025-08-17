@@ -1,3 +1,7 @@
+/*==========================================================
+  1. VARIABLES Y RESETEO GLOBAL
+==========================================================*/
+
 :root {
     --primary-color: #4A90E2;
     --primary-hover: #357ABD;
@@ -31,7 +35,10 @@ body {
     min-height: 100vh;
 }
 
-/* Global Styles */
+/*==========================================================
+  2. LAYOUT Y ESTRUCTURA DE PÁGINAS
+==========================================================*/
+
 .page {
     display: none;
     position: absolute;
@@ -86,12 +93,22 @@ header {
     color: var(--primary-color);
 }
 
+.logo-image {
+    height: 30px;
+    margin-right: 10px;
+}
+
 .user-info {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
+/*==========================================================
+  3. COMPONENTES DE UI
+==========================================================*/
+
+/* Botones */
 .btn {
     padding: 10px 20px;
     border-radius: 8px;
@@ -136,6 +153,7 @@ header {
     background-color: #C0392B;
 }
 
+/* Contenedores y Títulos de Sección */
 .panel-container {
     max-width: 1200px;
     margin: 30px auto;
@@ -170,6 +188,10 @@ header {
     margin-bottom: 25px;
     flex-wrap: wrap;
 }
+
+/*==========================================================
+  4. ESTILOS DE FORMULARIOS
+==========================================================*/
 
 .form-section {
     background-color: var(--background-color);
@@ -251,7 +273,10 @@ input:focus, select:focus {
     display: none;
 }
 
-/* Tables */
+/*==========================================================
+  5. ESTILOS DE TABLAS Y LISTAS
+==========================================================*/
+
 .table-container {
     overflow-x: auto;
 }
@@ -313,7 +338,11 @@ td .btn {
     font-weight: 600;
 }
 
-/* Login Page */
+/*==========================================================
+  6. PÁGINAS ESPECÍFICAS
+==========================================================*/
+
+/* Página de Login */
 .login-page {
     display: flex;
     justify-content: center;
@@ -342,6 +371,10 @@ td .btn {
 .login-container .input-group {
     margin-bottom: 20px;
 }
+
+/*==========================================================
+  7. MODALS Y COMPONENTES DE INTERACCIÓN
+==========================================================*/
 
 /* Modals */
 .modal {
@@ -433,7 +466,10 @@ td .btn {
     100% { transform: rotate(360deg); }
 }
 
-/* Media Queries for Responsiveness */
+/*==========================================================
+  8. MEDIA QUERIES PARA RESPONSIVIDAD
+==========================================================*/
+
 @media (max-width: 768px) {
     .header-content {
         flex-direction: column;
@@ -458,9 +494,4 @@ td .btn {
         flex-direction: column;
         gap: 10px;
     }
-}
-
-.logo-image {
-    height: 30px; /* Ajusta este valor al tamaño que desees para el logo */
-    margin-right: 10px; /* Espacio entre el logo y el texto */
 }
