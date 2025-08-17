@@ -84,7 +84,7 @@ function formatDate(timestamp) {
 
 function parseCurrency(value) {
     if (typeof value !== 'string') return value;
-    const cleanValue = value.replace(/[$.]/g, '').replace(',', '.');
+    const cleanValue = value.replace(/\./g, '').replace(',', '.');
     return parseFloat(cleanValue);
 }
 
