@@ -313,8 +313,8 @@ td .btn {
 /* Login Page */
 .login-page {
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: center !important;
+    align-items: center !important;
     background: linear-gradient(135deg, var(--primary-color), #85A3D5);
     min-height: 100vh;
 }
