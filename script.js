@@ -49,6 +49,8 @@ const showChangePasswordBtn = document.getElementById('show-change-password-form
 const credentialsError = document.getElementById('credentials-error');
 const credentialsSuccess = document.getElementById('credentials-success');
 const loadingSpinner = document.getElementById('loading-spinner');
+const cancelChangeCredentialsBtn = document.getElementById('cancel-change-credentials');
+
 
 // Global variables
 let currentResidentId = null;
@@ -360,11 +362,10 @@ excelFile.addEventListener('change', (e) => {
 async function showBillHistory(residentId) {
     showSpinner();
     billHistoryTableBody.innerHTML = '';
-    const residentDoc = await db.collection('residents').doc(residentId).get();
-    const resident = residentDoc.data();
-    modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
-
     try {
+        const residentDoc = await db.collection('residents').doc(residentId).get();
+        const resident = residentDoc.data();
+        modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
         if (billsSnapshot.empty) {
             billHistoryTableBody.innerHTML = `<tr><td colspan="6">No se encontraron facturas para este residente.</td></tr>`;
@@ -413,7 +414,6 @@ billHistoryModal.addEventListener('click', async (e) => {
             try {
                 await db.collection('bills').doc(billId).delete();
                 alert('Factura eliminada.');
-                // We re-load the bills for the current resident to update the table
                 if (currentResidentId) {
                     showBillHistory(currentResidentId);
                 }
@@ -438,6 +438,7 @@ async function showEditBillModal(billId) {
         editBillForm['edit-bill-concept'].value = bill.concept;
         editBillForm['edit-bill-status'].value = bill.status;
         editBillForm['edit-bill-payment-date'].value = bill.status === 'Pagada' && bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000).toISOString().slice(0, 10) : '';
+        
         billHistoryModal.classList.remove('active');
         editBillModal.classList.add('active');
     } catch (err) {
@@ -479,13 +480,24 @@ editBillForm.addEventListener('submit', async (e) => {
     }
 });
 
-document.querySelectorAll('.modal .close-btn, #cancel-edit-bill').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
-        if (currentResidentId) {
-             showBillHistory(currentResidentId);
-        }
-    });
+// Separate close event listeners for each modal
+billHistoryModal.querySelector('.close-btn').addEventListener('click', () => {
+    billHistoryModal.classList.remove('active');
+});
+
+editBillModal.querySelector('.close-btn').addEventListener('click', () => {
+    editBillModal.classList.remove('active');
+    if (currentResidentId) {
+        showBillHistory(currentResidentId);
+    }
+});
+
+// Add listeners for other cancel buttons if needed
+document.getElementById('cancel-edit-bill').addEventListener('click', () => {
+    editBillModal.classList.remove('active');
+    if (currentResidentId) {
+        showBillHistory(currentResidentId);
+    }
 });
 
 
@@ -662,7 +674,6 @@ changeCredentialsFormInner.addEventListener('submit', async (e) => {
             });
             credentialsSuccess.textContent = 'Credenciales actualizadas exitosamente.';
             changeCredentialsFormInner.reset();
-            // Update the welcome message with the new username
             const updatedResidentDoc = await db.collection('residents').doc(currentResidentId).get();
             const updatedResident = updatedResidentDoc.data();
             residentWelcome.textContent = `Bienvenido, ${updatedResident.name}`;
