@@ -88,6 +88,11 @@ function parseCurrency(value) {
     return parseFloat(cleanValue);
 }
 
+function formatCurrency(value) {
+    if (typeof value !== 'number' || isNaN(value)) return '$0';
+    return '$' + value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 // --- Login & Authentication ---
 
 loginForm.addEventListener('submit', async (e) => {
@@ -356,7 +361,7 @@ async function showBillHistory(residentId) {
                 const row = billHistoryTableBody.insertRow();
                 row.innerHTML = `
                     <td>${formatDate(bill.dueDate)}</td>
-                    <td>$${bill.amount.toFixed(2)}</td>
+                    <td>${formatCurrency(bill.amount)}</td>
                     <td>${bill.concept}</td>
                     <td class="status-${bill.status.toLowerCase()}">${bill.status}</td>
                     <td>${formatDate(bill.paymentDate)}</td>
@@ -508,7 +513,7 @@ async function loadResidentBills(residentId) {
                 row.dataset.id = doc.id;
                 row.innerHTML = `
                     <td>${bill.concept}</td>
-                    <td>$${bill.amount.toFixed(2)}</td>
+                    <td>${formatCurrency(bill.amount)}</td>
                     <td>${formatDate(bill.dueDate)}</td>
                     <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
                     <td>
@@ -577,7 +582,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         <tbody>
                             <tr>
                                 <td style="padding: 10px; border: 1px solid #ddd;">${bill.concept}</td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">$${bill.amount.toFixed(2)}</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${formatCurrency(bill.amount)}</td>
                                 <td style="padding: 10px; border: 1px solid #ddd;">${formatDate(bill.dueDate)}</td>
                                 <td style="padding: 10px; border: 1px solid #ddd;">${bill.status}</td>
                             </tr>
@@ -589,18 +594,18 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         <ul style="list-style: none; padding: 0; margin-top: 15px;">
                             <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
                                 <span>Monto de la Factura:</span>
-                                <span>$${bill.amount.toFixed(2)}</span>
+                                <span>${formatCurrency(bill.amount)}</span>
                             </li>
                             <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
                                 <span>Multa (10%):</span>
-                                <span>$${multa.toFixed(2)}</span>
+                                <span>${formatCurrency(multa)}</span>
                             </li>
                         </ul>
                     ` : ''}
 
                     <div style="background-color: #eaf3ff; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: right;">
                         <h3 style="margin: 0; font-size: 20px; color: #4A90E2;">TOTAL A PAGAR</h3>
-                        <p style="font-size: 28px; font-weight: 700; color: #4A90E2; margin: 5px 0;">$${finalAmount.toFixed(2)}</p>
+                        <p style="font-size: 28px; font-weight: 700; color: #4A90E2; margin: 5px 0;">${formatCurrency(finalAmount)}</p>
                         <p style="font-size: 14px; color: #777; margin-top: 10px;">
                             ${bill.status === 'Pagada' ? `<strong>Fecha de Pago:</strong> ${formatDate(bill.paymentDate)}` : ''}
                         </p>
