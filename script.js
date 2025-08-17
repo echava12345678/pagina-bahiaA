@@ -431,13 +431,25 @@ excelUpload.addEventListener('change', (e) => {
 // Lógica para cambiar credenciales del residente
 changeCredentialsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    // Asegúrate de agregar un campo de entrada para la contraseña antigua en el HTML
+    const oldPassword = changeCredentialsForm['old-password'].value; 
     const newUsername = changeCredentialsForm['new-username'].value;
     const newPassword = changeCredentialsForm['new-password'].value;
 
     if (currentResidentDocId) {
         try {
-            // Usa el ID del documento guardado para actualizar las credenciales
+            // Obtener el documento actual del residente para verificar la contraseña
             const residentDocRef = doc(db, 'residents', currentResidentDocId);
+            const residentDoc = await getDoc(residentDocRef);
+            const residentData = residentDoc.data();
+
+            // Verificar si la contraseña antigua coincide con la guardada
+            if (residentData.contrasena !== oldPassword) {
+                showMessage('La contraseña antigua es incorrecta.');
+                return;
+            }
+
+            // Usa el ID del documento guardado para actualizar las credenciales
             await updateDoc(residentDocRef, {
                 usuario: newUsername,
                 contrasena: newPassword,
