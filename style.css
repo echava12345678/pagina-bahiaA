@@ -495,3 +495,20 @@ td .btn {
         gap: 10px;
     }
 }
+
+/* Nuevo CSS para centrar el contenedor de login */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary-color), #85A3D5);
+}
+
+.login-page {
+    /* Elimina las propiedades de centrado si las tiene, ya que el body se encarga de eso */
+    display: block;
+    position: relative; /* Ajusta la posición para que no se superponga con otros elementos */
+    width: 100%; /* El 100% del body */
+    max-width: 450px; /* Mantiene el tamaño original del login-container */
+}
