@@ -506,7 +506,11 @@ async function loadResidentBills(residentId) {
             billsSnapshot.forEach(doc => {
                 const bill = doc.data();
                 const today = new Date();
+                // Normaliza la fecha de vencimiento a solo día, mes y año
                 const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
+                if (dueDate) {
+                    dueDate.setHours(0, 0, 0, 0);
+                }
                 const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
                 
                 const row = residentBillsTableBody.insertRow();
@@ -546,6 +550,9 @@ residentBillsTableBody.addEventListener('click', async (e) => {
 
             const today = new Date();
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
+            if (dueDate) {
+                dueDate.setHours(0, 0, 0, 0);
+            }
             const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
             const multa = isLate ? bill.amount * 0.10 : 0; // 10% late fee
             const finalAmount = bill.amount + multa;
