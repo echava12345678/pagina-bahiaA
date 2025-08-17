@@ -3,193 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Edificios - Admin & Residente</title>
-    <!-- Tailwind CSS CDN para un diseño moderno y atractivo -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Enlace al archivo de estilos externo -->
-    <link rel="stylesheet" href="style.css">
-    <!-- Scripts para las librerías de PDF y Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <title>Bahía - Gestión de Residencias</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+        .panel {
+            min-height: 80vh;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body>
 
-    <!-- Contenedor principal de la aplicación -->
-    <div class="main-container">
-        
-        <!-- Panel de Inicio de Sesión -->
-        <div id="login-panel" class="panel">
-            <h2 class="text-3xl font-bold text-center mb-6 text-gray-800">Inicio de Sesión</h2>
-            <form id="login-form" class="space-y-4">
-                <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700">Usuario</label>
-                    <input type="text" id="username" name="username" required 
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+<div class="container mx-auto p-4">
+
+    <!-- Panel de Inicio de Sesión -->
+    <div id="login-panel" class="panel flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+            <h2 class="text-2xl font-bold mb-6 text-center">Iniciar Sesión</h2>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-gray-700 font-semibold mb-2">Usuario</label>
+                    <input type="text" id="username" name="username" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:ring-blue-200" required>
                 </div>
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
-                    <input type="password" id="password" name="password" required 
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+                <div class="mb-6">
+                    <label for="password" class="block text-gray-700 font-semibold mb-2">Contraseña</label>
+                    <input type="password" id="password" name="password" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:ring-blue-200" required>
                 </div>
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <input id="is-admin" name="is-admin" type="checkbox" 
-                               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                        <label for="is-admin" class="ml-2 block text-sm text-gray-900">Iniciar como administrador</label>
-                    </div>
+                <div class="mb-4 flex items-center justify-between">
+                    <label class="flex items-center text-gray-700">
+                        <input type="checkbox" id="is-admin" name="is-admin" class="mr-2">
+                        <span>Iniciar como Administrador</span>
+                    </label>
                 </div>
-                <button type="submit" 
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
-                    Entrar
-                </button>
-                <div id="login-message" class="text-center text-red-500 mt-2"></div>
+                <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition-colors">Entrar</button>
             </form>
+            <p id="login-message" class="mt-4 text-center text-red-500"></p>
         </div>
+    </div>
 
-        <!-- Panel de Administrador -->
-        <div id="admin-panel" class="panel hidden">
-            <h2 class="text-3xl font-bold text-center mb-6 text-gray-800">Panel de Administración</h2>
-            <button id="logout-button" class="absolute top-4 right-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-full transition-all">Salir</button>
+    <!-- Panel de Administrador -->
+    <div id="admin-panel" class="panel hidden">
+        <header class="flex justify-between items-center py-4 border-b border-gray-200 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Panel de Administración</h1>
+            <button id="logout-button" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors">Cerrar Sesión</button>
+        </header>
 
-            <!-- Cargar desde Excel -->
-            <div class="mb-6 border-b pb-4">
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">Cargar Datos desde Excel</h3>
-                <input type="file" id="excel-upload" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all">
-                <div id="excel-message" class="mt-2 text-sm text-gray-600"></div>
-            </div>
-
-            <!-- Formulario de Ingreso de Datos -->
-            <div class="mb-6">
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">Ingresar Datos de Residente</h3>
-                <form id="resident-form" class="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="hidden" id="resident-id-hidden">
-                    <div>
-                        <label for="depto" class="block text-sm font-medium text-gray-700">Depto.</label>
-                        <input type="text" id="depto" name="depto" required 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+        <!-- Formularios y Secciones -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Formulario para agregar/editar residente -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold mb-4">Agregar / Editar Residente</h2>
+                <form id="resident-form">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="depto" class="block text-gray-700 font-semibold mb-1">Depto</label>
+                            <input type="text" id="depto" name="depto" class="w-full px-3 py-2 border rounded-md" required>
+                        </div>
+                        <div>
+                            <label for="resident-name" class="block text-gray-700 font-semibold mb-1">Nombre</label>
+                            <input type="text" id="resident-name" name="resident-name" class="w-full px-3 py-2 border rounded-md" required>
+                        </div>
+                        <div>
+                            <label for="user" class="block text-gray-700 font-semibold mb-1">Usuario</label>
+                            <input type="text" id="user" name="user" class="w-full px-3 py-2 border rounded-md" required>
+                            <p id="user-message" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <label for="pass" class="block text-gray-700 font-semibold mb-1">Contraseña</label>
+                            <input type="password" id="pass" name="pass" class="w-full px-3 py-2 border rounded-md" required>
+                            <p id="pass-message" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <label for="due-date" class="block text-gray-700 font-semibold mb-1">Fecha de Vencimiento</label>
+                            <input type="date" id="due-date" name="due-date" class="w-full px-3 py-2 border rounded-md" required>
+                        </div>
+                        <div>
+                            <label for="amount" class="block text-gray-700 font-semibold mb-1">Monto ($)</label>
+                            <input type="text" id="amount" name="amount" class="w-full px-3 py-2 border rounded-md" placeholder="100.000" required>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="concept" class="block text-gray-700 font-semibold mb-1">Concepto</label>
+                            <input type="text" id="concept" name="concept" class="w-full px-3 py-2 border rounded-md" required>
+                        </div>
+                        <div class="md:col-span-2 flex items-center mb-2">
+                            <input type="checkbox" id="paid-status" name="paid-status" class="mr-2">
+                            <label for="paid-status" class="text-gray-700 font-semibold">Pagado</label>
+                        </div>
+                        <div id="payment-date-container" class="md:col-span-2 hidden">
+                            <label for="payment-date" class="block text-gray-700 font-semibold mb-1">Fecha de Pago</label>
+                            <input type="date" id="payment-date" name="payment-date" class="w-full px-3 py-2 border rounded-md">
+                        </div>
                     </div>
-                    <div>
-                        <label for="resident-name" class="block text-sm font-medium text-gray-700">Nombre</label>
-                        <input type="text" id="resident-name" name="resident-name" required 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                    </div>
-                    <div>
-                        <label for="user" class="block text-sm font-medium text-gray-700">Usuario</label>
-                        <input type="text" id="user" name="user" required 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                    </div>
-                    <div>
-                        <label for="pass" class="block text-sm font-medium text-gray-700">Contraseña</label>
-                        <input type="password" id="pass" name="pass" required 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                    </div>
-                    <div>
-                        <label for="due-date" class="block text-sm font-medium text-gray-700">Fecha Vencimiento Factura</label>
-                        <input type="date" id="due-date" name="due-date" required 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                    </div>
-                    <div>
-                        <label for="amount" class="block text-sm font-medium text-gray-700">Monto Factura</label>
-                        <input type="number" id="amount" name="amount" required step="0.01" 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                    </div>
-                    <div>
-                        <label for="concept" class="block text-sm font-medium text-gray-700">Concepto Factura</label>
-                        <input type="text" id="concept" name="concept" required 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                    </div>
-                    <div class="md:col-span-2 flex items-center">
-                        <input type="checkbox" id="paid-status" name="paid-status" 
-                               class="h-4 w-4 text-indigo-600 rounded">
-                        <label for="paid-status" class="ml-2 block text-sm text-gray-900">Factura Pagada</label>
-                    </div>
-                    <div id="payment-date-container" class="md:col-span-2 hidden">
-                        <label for="payment-date" class="block text-sm font-medium text-gray-700">Fecha de Pago</label>
-                        <input type="date" id="payment-date" name="payment-date" 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                    </div>
-                    <div class="md:col-span-2">
-                        <button type="submit" 
-                                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all">
-                            Guardar Residente
-                        </button>
-                    </div>
+                    <button type="submit" class="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition-colors">Guardar Residente</button>
                 </form>
             </div>
 
-            <!-- Tabla de Residentes -->
-            <div>
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">Residentes y Facturas</h3>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depto.</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="residents-table-body" class="bg-white divide-y divide-gray-200">
-                            <!-- Datos de residentes se insertarán aquí por JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Importar datos de Excel -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold mb-4">Importar desde Excel</h2>
+                <p class="text-gray-600 mb-4">Sube un archivo .xlsx o .csv con las columnas: depto, nombre, usuario, contrasena, fecha_factura, monto_factura, factura_estado, concepto_factura, fecha_pago</p>
+                <input type="file" id="excel-upload" accept=".xlsx, .xls, .csv" class="w-full border rounded-md p-2">
+                <p id="excel-message" class="mt-4 text-center text-red-500"></p>
             </div>
         </div>
 
-        <!-- Panel de Residente -->
-        <div id="resident-panel" class="panel hidden">
-            <h2 class="text-3xl font-bold text-center mb-6 text-gray-800">Panel de Residente</h2>
-            <button id="resident-logout-button" class="absolute top-4 right-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-full transition-all">Salir</button>
-            
-            <div id="resident-info" class="mb-6 p-4 bg-blue-50 rounded-lg text-blue-700">
-                <h3 class="text-xl font-semibold">Bienvenido, <span id="resident-name-display"></span></h3>
-                <p>Apartamento: <span id="resident-depto-display"></span></p>
-            </div>
+        <!-- Tabla de Residentes -->
+        <div class="bg-white mt-8 p-6 rounded-lg shadow-md overflow-x-auto">
+            <h2 class="text-xl font-bold mb-4">Residentes y Facturas</h2>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depto</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="residents-table-body" class="bg-white divide-y divide-gray-200">
+                    <!-- Filas de residentes se insertarán aquí por JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-            <!-- Sección de Facturas -->
-            <div class="mb-6">
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">Mis Facturas</h3>
+    <!-- Panel de Residente -->
+    <div id="resident-panel" class="panel hidden">
+        <header class="flex justify-between items-center py-4 border-b border-gray-200 mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Bienvenido(a), <span id="resident-name-display"></span></h1>
+                <p class="text-lg text-gray-600">Apartamento: <span id="resident-depto-display"></span></p>
+            </div>
+            <button id="resident-logout-button" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors">Cerrar Sesión</button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Facturas del Residente -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold mb-4">Mis Facturas</h2>
                 <div id="invoices-list" class="space-y-4">
-                    <!-- Facturas se insertarán aquí por JavaScript -->
+                    <!-- Las facturas se insertarán aquí por JavaScript -->
                 </div>
             </div>
 
-            <!-- Sección para Cambiar Contraseña/Usuario -->
-            <div>
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">Cambiar Credenciales</h3>
-                <form id="change-credentials-form" class="space-y-4">
-                    <div>
-                        <label for="new-username" class="block text-sm font-medium text-gray-700">Nuevo Usuario</label>
-                        <input type="text" id="new-username" name="new-username" required 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+            <!-- Formulario de cambio de credenciales -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold mb-4">Cambiar Credenciales</h2>
+                <form id="change-credentials-form">
+                    <div class="mb-4">
+                        <label for="old-password" class="block text-gray-700 font-semibold mb-2">Contraseña Antigua</label>
+                        <input type="password" id="old-password" name="old-password" class="w-full px-3 py-2 border rounded-md" required>
                     </div>
-                    <div>
-                        <label for="new-password" class="block text-sm font-medium text-gray-700">Nueva Contraseña</label>
-                        <input type="password" id="new-password" name="new-password" required 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    <div class="mb-4">
+                        <label for="new-username" class="block text-gray-700 font-semibold mb-2">Nuevo Usuario</label>
+                        <input type="text" id="new-username" name="new-username" class="w-full px-3 py-2 border rounded-md" required>
                     </div>
-                    <button type="submit" 
-                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">
-                        Cambiar
-                    </button>
+                    <div class="mb-6">
+                        <label for="new-password" class="block text-gray-700 font-semibold mb-2">Nueva Contraseña</label>
+                        <input type="password" id="new-password" name="new-password" class="w-full px-3 py-2 border rounded-md" required>
+                    </div>
+                    <button type="submit" class="w-full bg-purple-500 text-white py-2 rounded-md hover:bg-purple-600 transition-colors">Actualizar</button>
                 </form>
-            </div>
-        </div>
-
-        <!-- Modal para mensajes -->
-        <div id="message-modal" class="modal hidden">
-            <div class="modal-content">
-                <span class="close-button">&times;</span>
-                <p id="modal-text" class="text-gray-800"></p>
             </div>
         </div>
     </div>
 
-    <!-- Enlace al archivo de script externo, usando type="module" -->
-    <script type="module" src="script.js"></script>
+</div>
+
+<!-- Modal para Mensajes -->
+<div id="message-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-text"></h3>
+            <div class="mt-4 px-7 py-3">
+                <button class="close-button px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module" src="./script.js"></script>
+
 </body>
 </html>
