@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Configurar la persistencia de la sesión
+// Configurar la persistencia de la sesión en el navegador
 setPersistence(auth, browserSessionPersistence);
 
 // Referencias a los elementos del DOM
@@ -72,7 +72,7 @@ onAuthStateChanged(auth, async (user) => {
             isUserAdmin = userDoc.data().role === 'admin';
             displayDashboard(isUserAdmin, userDoc.data());
         } else {
-            // Si el usuario existe en Auth pero no en Firestore, cerrar sesión
+            // Si el usuario existe en Auth pero no en Firestore, cerrar sesión para evitar errores
             console.error("No se encontraron datos de usuario en Firestore.");
             signOut(auth);
             displayLogin();
@@ -120,7 +120,7 @@ loginForm.addEventListener('submit', async (e) => {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, username, password);
             const userDocRef = doc(db, "users", userCredential.user.uid);
-            await setDoc(userDocRef, { role: 'admin' }, { merge: true });
+            await setDoc(userDocRef, { role: 'admin' }, { merge: true }); // Usar setDoc con merge para no sobrescribir datos
         } catch (error) {
             errorMessage.textContent = 'Error al iniciar sesión como admin. Verifique las credenciales.';
             console.error("Error de login de admin:", error);
