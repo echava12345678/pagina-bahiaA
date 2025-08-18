@@ -1,7 +1,7 @@
 // Importa las funciones necesarias de los SDKs de Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js";
 
 // Configuración de Firebase
 const firebaseConfig = {
@@ -109,48 +109,49 @@ loginForm.addEventListener('submit', async (e) => {
     const username = loginForm.username.value;
     const password = loginForm.password.value;
 
-    if (username === 'admin@bahia.com' && password === 'admin123') {
-        try {
-            const userCredential = await signInWithEmailAndPassword(auth, 'admin@bahia.com', 'admin123');
-            const userDocRef = doc(db, "users", userCredential.user.uid);
-            await updateDoc(userDocRef, { role: 'admin' });
-            // onAuthStateChanged se encargará de redirigir
-        } catch (error) {
-            errorMessage.textContent = 'Error al iniciar sesión como admin. Verifique las credenciales.';
-            console.error("Error de login de admin:", error);
-        }
-        return;
-    }
-
-    // Lógica para residentes
-    const q = query(collection(db, "invoices"), where("username", "==", username));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
-        return;
-    }
-
-    const userData = querySnapshot.docs[0].data();
-    const userPassword = userData.password;
-    const userEmail = `${username}@temp.com`; // Usamos un email temporal para Firebase Auth
-
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, userEmail, userPassword);
-        const userDocRef = doc(db, "users", userCredential.user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (!userDoc.exists()) {
-             await addDoc(collection(db, "users"), {
-                uid: userCredential.user.uid,
-                role: 'resident',
-                resId: userData.resId,
-                depto: userData.depto,
-                username: userData.username
-            });
+        // Buscar si el usuario existe en la colección 'invoices'
+        const q = query(collection(db, "invoices"), where("username", "==", username));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            errorMessage.textContent = 'Usuario o contraseña incorrectos.';
+            return;
         }
+
+        const userData = querySnapshot.docs[0].data();
+        const userPassword = userData.password;
+        
+        if (password !== userPassword) {
+            errorMessage.textContent = 'Usuario o contraseña incorrectos.';
+            return;
+        }
+
+        // Si las credenciales son correctas, intentar autenticarse en Firebase Auth
+        const userEmail = `${username}@temp.com`; // Email temporal para Firebase Auth
+        let userCredential;
+
+        try {
+            userCredential = await signInWithEmailAndPassword(auth, userEmail, userPassword);
+        } catch (authError) {
+            // Si el usuario no existe en Firebase Auth, lo crea
+            if (authError.code === 'auth/user-not-found') {
+                userCredential = await auth.createUserWithEmailAndPassword(userEmail, userPassword);
+                await setDoc(doc(db, "users", userCredential.user.uid), {
+                    role: 'resident',
+                    resId: userData.resId,
+                    depto: userData.depto,
+                    username: userData.username,
+                    invoiceId: querySnapshot.docs[0].id
+                });
+            } else {
+                throw authError;
+            }
+        }
+        
     } catch (error) {
-        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
-        console.error("Error de login de residente:", error);
+        errorMessage.textContent = 'Error al iniciar sesión. Verifique las credenciales.';
+        console.error("Error de login:", error);
     }
 });
 
@@ -454,24 +455,30 @@ changePassForm.addEventListener('submit', async (e) => {
         return;
     }
 
-    const userRef = doc(db, "invoices", currentUser.uid);
-    const userDoc = await getDoc(userRef);
-    const currentPassword = userDoc.data().password;
+    // Obtener la contraseña actual del documento de Firestore del usuario
+    const userDocRef = doc(db, "users", currentUser.uid);
+    const userDoc = await getDoc(userDocRef);
 
-    if (oldPass !== currentPassword) {
-        passErrorMessage.textContent = 'La contraseña actual es incorrecta.';
-        return;
-    }
-
-    try {
-        await updatePassword(currentUser, newPass);
-        await updateDoc(userRef, { password: newPass });
-        alert('Contraseña actualizada con éxito.');
-        changePassCard.classList.add('hidden');
-        changePassForm.reset();
-    } catch (error) {
-        console.error("Error al actualizar la contraseña:", error);
-        passErrorMessage.textContent = 'Ocurrió un error al cambiar la contraseña. Intente de nuevo.';
+    if (userDoc.exists()) {
+        const invoiceId = userDoc.data().invoiceId;
+        const invoiceDocRef = doc(db, "invoices", invoiceId);
+        const invoiceDoc = await getDoc(invoiceDocRef);
+        
+        if (invoiceDoc.exists() && oldPass === invoiceDoc.data().password) {
+            try {
+                // Actualizar la contraseña en Firebase Auth y Firestore
+                await updatePassword(currentUser, newPass);
+                await updateDoc(invoiceDocRef, { password: newPass });
+                alert('Contraseña actualizada con éxito.');
+                changePassCard.classList.add('hidden');
+                changePassForm.reset();
+            } catch (error) {
+                console.error("Error al actualizar la contraseña:", error);
+                passErrorMessage.textContent = 'Ocurrió un error al cambiar la contraseña. Intente de nuevo.';
+            }
+        } else {
+            passErrorMessage.textContent = 'La contraseña actual es incorrecta.';
+        }
     }
 });
 
