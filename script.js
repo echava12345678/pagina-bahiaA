@@ -688,3 +688,8 @@ changeCredentialsFormInner.addEventListener('submit', async (e) => {
         hideSpinner();
     }
 });
+
+// Ocultar el spinner una vez que el DOM esté completamente cargado.
+document.addEventListener('DOMContentLoaded', () => {
+    hideSpinner();
+});
