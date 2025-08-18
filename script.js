@@ -383,7 +383,7 @@ async function showBillHistory(residentId) {
         modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
         if (billsSnapshot.empty) {
-            billHistoryTableBody.innerHTML = `<tr><td colspan="6">No se encontraron facturas para este residente.</td></tr>`;
+            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`; // Corregir colspan
         } else {
             billsSnapshot.forEach(doc => {
                 const bill = doc.data();
@@ -402,6 +402,11 @@ async function showBillHistory(residentId) {
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
+                    <td>
+                        <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
+                            <i class="fas fa-file-download"></i>
+                        </button>
+                    </td>
                 `;
             });
         }
@@ -418,6 +423,7 @@ async function showBillHistory(residentId) {
 billHistoryModal.addEventListener('click', async (e) => {
     const editBtn = e.target.closest('.edit-bill-btn');
     const deleteBtn = e.target.closest('.delete-bill-btn');
+    const downloadBtn = e.target.closest('.download-receipt-btn'); // Nuevo
 
     if (editBtn) {
         const billId = editBtn.dataset.id;
@@ -438,6 +444,97 @@ billHistoryModal.addEventListener('click', async (e) => {
             } finally {
                 hideSpinner();
             }
+        }
+    } else if (downloadBtn) { // Nueva condición para el botón de descarga
+        const billId = downloadBtn.dataset.id;
+        showSpinner();
+        try {
+            const billDoc = await db.collection('bills').doc(billId).get();
+            const bill = billDoc.data();
+            const residentDoc = await db.collection('residents').doc(bill.residentId).get();
+            const resident = residentDoc.data();
+            const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
+            if (dueDate) {
+                dueDate.setHours(0, 0, 0, 0);
+            }
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
+                         (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+            const multa = isLate ? bill.amount * 0.10 : 0;
+            const finalAmount = bill.amount + multa;
+            const receiptContent = `
+                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+                    <div style="text-align: center; border-bottom: 2px solid #4A90E2; padding-bottom: 20px; margin-bottom: 20px;">
+                        <h1 style="color: #4A90E2; font-size: 24px; margin: 0;"><i class="fas fa-building" style="margin-right: 10px;"></i>RECIBO DE PAGO</h1>
+                        <p style="font-size: 14px; color: #777;">Gestión de Edificio</p>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                        <div>
+                            <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString('es-CO')}</p>
+                            <p><strong>Recibo No.:</strong> ${billDoc.id.substring(0, 8)}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <p><strong>Residente:</strong> ${resident.name}</p>
+                            <p><strong>Departamento:</strong> ${resident.depto}</p>
+                        </div>
+                    </div>
+                    <h2 style="font-size: 18px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">Detalles de la Factura</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <thead>
+                            <tr style="background-color: #f2f2f2;">
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Concepto</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Monto</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Fecha Venc.</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${bill.concept}</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${formatCurrency(bill.amount)}</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${formatDate(bill.dueDate)}</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${bill.status}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    ${isLate ? `
+                        <p style="color: #F39C12; font-weight: 600;">¡Atención! La fecha de vencimiento ha pasado. Se ha aplicado una multa.</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 15px;">
+                            <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
+                                <span>Monto de la Factura:</span>
+                                <span>${formatCurrency(bill.amount)}</span>
+                            </li>
+                            <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
+                                <span>Multa (10%):</span>
+                                <span>${formatCurrency(multa)}</span>
+                            </li>
+                        </ul>
+                    ` : ''}
+                    <div style="background-color: #eaf3ff; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: right;">
+                        <h3 style="margin: 0; font-size: 20px; color: #4A90E2;">TOTAL A PAGAR</h3>
+                        <p style="font-size: 28px; font-weight: 700; color: #4A90E2; margin: 5px 0;">${formatCurrency(finalAmount)}</p>
+                        <p style="font-size: 14px; color: #777; margin-top: 10px;">
+                            ${bill.status === 'Pagada' ? `<strong>Fecha de Pago:</strong> ${formatDate(bill.paymentDate)}` : ''}
+                        </p>
+                    </div>
+                    <div style="margin-top: 30px; text-align: center; border-top: 1px solid #ddd; padding-top: 20px;">
+                        <p style="font-size: 12px; color: #aaa;">Gracias por tu pago. Para cualquier consulta, contacta con la administración.</p>
+                        <p style="font-size: 12px; color: #aaa;">Generado por el sistema de gestión del edificio el ${new Date().toLocaleDateString('es-CO')}</p>
+                    </div>
+                </div>
+            `;
+            const options = {
+                margin: 10,
+                filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().from(receiptContent).set(options).save();
+        } catch (err) {
+            console.error("Error generating PDF:", err);
+            alert('Error al generar el recibo.');
+        } finally {
+            hideSpinner();
         }
     }
 });
