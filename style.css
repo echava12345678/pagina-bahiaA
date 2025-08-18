@@ -1,5 +1,5 @@
 /*==========================================================
-  1. VARIABLES Y RESETEO GLOBAL
+ 1. VARIABLES Y RESETEO GLOBAL
 ==========================================================*/
 
 :root {
@@ -36,7 +36,7 @@ body {
 }
 
 /*==========================================================
-  2. LAYOUT Y ESTRUCTURA DE PÁGINAS
+ 2. LAYOUT Y ESTRUCTURA DE PÁGINAS
 ==========================================================*/
 
 .page {
@@ -105,7 +105,7 @@ header {
 }
 
 /*==========================================================
-  3. COMPONENTES DE UI
+ 3. COMPONENTES DE UI
 ==========================================================*/
 
 /* Botones */
@@ -190,7 +190,7 @@ header {
 }
 
 /*==========================================================
-  4. ESTILOS DE FORMULARIOS
+ 4. ESTILOS DE FORMULARIOS
 ==========================================================*/
 
 .form-section {
@@ -274,7 +274,7 @@ input:focus, select:focus {
 }
 
 /*==========================================================
-  5. ESTILOS DE TABLAS Y LISTAS
+ 5. ESTILOS DE TABLAS Y LISTAS
 ==========================================================*/
 
 .table-container {
@@ -339,16 +339,16 @@ td .btn {
 }
 
 /*==========================================================
-  6. PÁGINAS ESPECÍFICAS
+ 6. PÁGINAS ESPECÍFICAS
 ==========================================================*/
 
 /* Página de Login */
 .login-page {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(135deg, var(--primary-color), #85A3D5);
-    min-height: 100vh;
+    /* Las propiedades de centrado se mueven al body */
+    width: 100%;
+    max-width: 450px;
+    text-align: center; /* Centra el contenido como texto */
+    padding: 20px;
 }
 
 .login-container {
@@ -357,8 +357,6 @@ td .btn {
     border-radius: 15px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     width: 100%;
-    max-width: 450px;
-    text-align: center;
 }
 
 .login-container h2 {
@@ -372,8 +370,34 @@ td .btn {
     margin-bottom: 20px;
 }
 
+/* AÑADIDO: Nuevas reglas para el centrado global y el logo */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary-color), #85A3D5);
+}
+
+#login-page .logo-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+    color: var(--secondary-color);
+    gap: 0; /* Elimina el gap entre los elementos */
+}
+
+#login-page .logo-text .logo-image {
+    height: 80px; /* Aumenta el tamaño del logo */
+    margin-bottom: 15px; /* Espacio entre el logo y el texto */
+    margin-right: 0; /* Asegura que no haya un margen a la derecha */
+}
+
+
 /*==========================================================
-  7. MODALS Y COMPONENTES DE INTERACCIÓN
+ 7. MODALS Y COMPONENTES DE INTERACCIÓN
 ==========================================================*/
 
 /* Modals */
@@ -467,7 +491,7 @@ td .btn {
 }
 
 /*==========================================================
-  8. MEDIA QUERIES PARA RESPONSIVIDAD
+ 8. MEDIA QUERIES PARA RESPONSIVIDAD
 ==========================================================*/
 
 @media (max-width: 768px) {
@@ -494,21 +518,4 @@ td .btn {
         flex-direction: column;
         gap: 10px;
     }
-}
-
-/* Nuevo CSS para centrar el contenedor de login */
-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    background: linear-gradient(135deg, var(--primary-color), #85A3D5);
-}
-
-.login-page {
-    /* Elimina las propiedades de centrado si las tiene, ya que el body se encarga de eso */
-    display: block;
-    position: relative; /* Ajusta la posición para que no se superponga con otros elementos */
-    width: 100%; /* El 100% del body */
-    max-width: 450px; /* Mantiene el tamaño original del login-container */
 }
