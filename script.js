@@ -53,14 +53,6 @@ const loader = document.getElementById('loader');
 let currentUser;
 let isUserAdmin = false;
 
-// Oculta el loader al cargar la página
-window.addEventListener('load', () => {
-    loader.style.opacity = '0';
-    setTimeout(() => {
-        loader.style.display = 'none';
-    }, 500);
-});
-
 // Maneja el estado de la autenticación
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -80,6 +72,11 @@ onAuthStateChanged(auth, async (user) => {
     } else {
         displayLogin();
     }
+    // Oculta el loader una vez que el estado de autenticación se ha resuelto
+    loader.style.opacity = '0';
+    setTimeout(() => {
+        loader.style.display = 'none';
+    }, 500);
 });
 
 // Función para mostrar la vista de login
@@ -115,12 +112,12 @@ loginForm.addEventListener('submit', async (e) => {
     const password = loginForm.password.value;
     errorMessage.textContent = '';
     
-    // Primero, intentar iniciar sesión como administrador
+    // Intenta iniciar sesión como administrador
     if (username === 'admin@bahia.com' && password === 'admin123') {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, username, password);
             const userDocRef = doc(db, "users", userCredential.user.uid);
-            await setDoc(userDocRef, { role: 'admin' }, { merge: true }); // Usar setDoc con merge para no sobrescribir datos
+            await setDoc(userDocRef, { role: 'admin' }, { merge: true });
         } catch (error) {
             errorMessage.textContent = 'Error al iniciar sesión como admin. Verifique las credenciales.';
             console.error("Error de login de admin:", error);
@@ -128,7 +125,7 @@ loginForm.addEventListener('submit', async (e) => {
         return;
     }
 
-    // Si no es admin, buscar en la base de datos de facturas para un residente
+    // Si no es admin, busca al usuario residente en Firestore
     const q = query(collection(db, "invoices"), where("username", "==", username));
     const querySnapshot = await getDocs(q);
 
@@ -144,7 +141,7 @@ loginForm.addEventListener('submit', async (e) => {
         return;
     }
 
-    // Autenticar al residente con el correo temporal
+    // Autentica al residente con el correo temporal
     const userEmail = `${username}@temp.com`;
     try {
         await signInWithEmailAndPassword(auth, userEmail, password);
