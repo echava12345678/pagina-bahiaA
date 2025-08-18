@@ -1,505 +1,492 @@
-//
-// Archivo: script.js
-// Lógica principal de la aplicación. Maneja la autenticación, la conexión a Firestore,
-// la gestión de datos y la generación de PDF.
-//
+// Importa las funciones necesarias de los SDKs de Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, onSnapshot, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// Configuración de Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyBQQbZeHBV9thJ0iy3c30k3ERCYvRoDQMM",
+    authDomain: "bahiaa.firebaseapp.com",
+    projectId: "bahiaa",
+    storageBucket: "bahiaa.firebasestorage.app",
+    messagingSenderId: "212926382954",
+    appId: "1:212926382954:web:526bfab6d7c29ee20c1b13",
+    measurementId: "G-C3DWGGH4KY"
+};
 
-// Credenciales del administrador (simulado)
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "123";
-const LATE_FEE_PERCENTAGE = 0.10; // 10% de multa
+// Inicializa Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-// Variables globales para la app y la base de datos
-let db, auth;
-let currentUserId;
+// Referencias a los elementos del DOM
+const loginSection = document.getElementById('login-section');
+const dashboardSection = document.getElementById('dashboard-section');
+const loginForm = document.getElementById('login-form');
+const errorMessage = document.getElementById('error-message');
+const adminPanel = document.getElementById('admin-panel');
+const residentPanel = document.getElementById('resident-panel');
+const logoutBtn = document.getElementById('logout-btn');
+const invoicesTable = document.getElementById('invoices-table');
+const residentInvoicesTable = document.getElementById('resident-invoices-table');
+const addInvoiceBtn = document.getElementById('add-invoice-btn');
+const invoiceForm = document.getElementById('invoice-form');
+const cancelInvoiceBtn = document.getElementById('cancel-invoice-btn');
+const excelUpload = document.getElementById('excel-upload');
+const changePassBtn = document.getElementById('change-pass-btn');
+const changePassCard = document.querySelector('.change-pass-card');
+const changePassForm = document.getElementById('change-pass-form');
+const passErrorMessage = document.getElementById('pass-error-message');
+const cancelPassChangeBtn = document.getElementById('cancel-pass-change');
+const residentUsernameSpan = document.getElementById('res-username');
+const residentDeptoSpan = document.getElementById('res-depto');
+const receiptModal = document.getElementById('receipt-modal');
+const receiptDetailsDiv = document.getElementById('receipt-details');
+const downloadReceiptBtn = document.getElementById('download-receipt-btn');
+const closeModalBtn = document.querySelector('.close-btn');
+const loader = document.getElementById('loader');
 
-// --- Configuración de Firebase y Autenticación ---
-const setupFirebase = async () => {
-    try {
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
-        
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+// Variables globales para la sesión del usuario
+let currentUser;
+let isUserAdmin = false;
 
-        if (initialAuthToken) {
-            await signInWithCustomToken(auth, initialAuthToken);
+// Oculta el loader al cargar la página
+window.onload = () => {
+    loader.style.opacity = '0';
+    setTimeout(() => {
+        loader.style.display = 'none';
+    }, 500);
+};
+
+// Maneja el estado de la autenticación
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        currentUser = user;
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+            isUserAdmin = userDoc.data().role === 'admin';
+            displayDashboard(isUserAdmin, userDoc.data());
         } else {
-            await signInAnonymously(auth);
+            console.error("No se encontraron datos de usuario en Firestore.");
+            signOut(auth);
         }
-        
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUserId = user.uid;
-                console.log("Usuario autenticado con ID:", currentUserId);
-                // Iniciar la lógica de la app después de la autenticación
-                initApp();
-            } else {
-                console.log("Usuario no autenticado. Mostrando panel de login.");
-                showPanel('login');
-            }
-        });
-        
-    } catch (error) {
-        console.error("Error al inicializar Firebase:", error);
-    }
-};
-
-// --- Manejo de la Interfaz de Usuario (UI) ---
-const showPanel = (panelId) => {
-    const panels = {
-        'login': document.getElementById('login-container'),
-        'admin': document.getElementById('admin-panel'),
-        'resident': document.getElementById('resident-panel')
-    };
-
-    Object.values(panels).forEach(panel => {
-        if (panel) panel.classList.add('hidden');
-    });
-
-    if (panels[panelId]) {
-        panels[panelId].classList.remove('hidden');
-    }
-};
-
-// Muestra un modal de mensaje
-const showMessageModal = (title, message, isSuccess) => {
-    const modal = document.getElementById('message-modal');
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-message').textContent = message;
-    
-    const titleElement = document.getElementById('modal-title');
-    if (isSuccess) {
-        titleElement.classList.add('text-green-600');
-        titleElement.classList.remove('text-red-600');
     } else {
-        titleElement.classList.add('text-red-600');
-        titleElement.classList.remove('text-green-600');
+        displayLogin();
     }
-    
-    modal.classList.remove('hidden');
-};
-
-// Cierra el modal de mensaje
-document.getElementById('close-message-modal').addEventListener('click', () => {
-    document.getElementById('message-modal').classList.add('hidden');
 });
 
-// --- Lógica del Panel de Administración ---
-const setupAdminPanel = () => {
-    // Escuchar cambios en la colección de residentes en tiempo real
-    const q = collection(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/public/data/residents`);
-    onSnapshot(q, (querySnapshot) => {
-        const residents = [];
-        querySnapshot.forEach((doc) => {
-            residents.push({ id: doc.id, ...doc.data() });
-        });
-        renderResidentsTable(residents);
-        renderInvoiceResidentSelect(residents);
-    });
-};
+// Función para mostrar la vista de login
+function displayLogin() {
+    dashboardSection.classList.add('hidden');
+    loginSection.classList.remove('hidden');
+    errorMessage.textContent = '';
+    loginForm.reset();
+}
 
-const renderResidentsTable = (residents) => {
-    const tableBody = document.getElementById('residents-table-body');
-    tableBody.innerHTML = '';
-    if (!residents.length) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No hay residentes registrados.</td></tr>`;
+// Función para mostrar el dashboard según el rol
+async function displayDashboard(isAdmin, userData) {
+    loginSection.classList.add('hidden');
+    dashboardSection.classList.remove('hidden');
+
+    if (isAdmin) {
+        adminPanel.classList.remove('hidden');
+        residentPanel.classList.add('hidden');
+        await loadAdminInvoices();
+    } else {
+        adminPanel.classList.add('hidden');
+        residentPanel.classList.remove('hidden');
+        residentUsernameSpan.textContent = userData.username;
+        residentDeptoSpan.textContent = userData.depto;
+        await loadResidentInvoices(userData.resId);
+    }
+}
+
+// Lógica de inicio de sesión
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = loginForm.username.value;
+    const password = loginForm.password.value;
+
+    if (username === 'admin@bahia.com' && password === 'admin123') {
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, 'admin@bahia.com', 'admin123');
+            const userDocRef = doc(db, "users", userCredential.user.uid);
+            await updateDoc(userDocRef, { role: 'admin' });
+            // onAuthStateChanged se encargará de redirigir
+        } catch (error) {
+            errorMessage.textContent = 'Error al iniciar sesión como admin. Verifique las credenciales.';
+            console.error("Error de login de admin:", error);
+        }
         return;
     }
-    residents.forEach(resident => {
+
+    // Lógica para residentes
+    const q = query(collection(db, "invoices"), where("username", "==", username));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
+        return;
+    }
+
+    const userData = querySnapshot.docs[0].data();
+    const userPassword = userData.password;
+    const userEmail = `${username}@temp.com`; // Usamos un email temporal para Firebase Auth
+
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, userEmail, userPassword);
+        const userDocRef = doc(db, "users", userCredential.user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (!userDoc.exists()) {
+             await addDoc(collection(db, "users"), {
+                uid: userCredential.user.uid,
+                role: 'resident',
+                resId: userData.resId,
+                depto: userData.depto,
+                username: userData.username
+            });
+        }
+    } catch (error) {
+        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
+        console.error("Error de login de residente:", error);
+    }
+});
+
+// Lógica de cierre de sesión
+logoutBtn.addEventListener('click', async () => {
+    await signOut(auth);
+});
+
+// --- Funciones para el Panel de Administrador ---
+
+// Cargar facturas del admin
+async function loadAdminInvoices() {
+    const invoicesCol = collection(db, "invoices");
+    const snapshot = await getDocs(invoicesCol);
+    const invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderAdminTable(invoices);
+}
+
+// Renderizar la tabla de facturas del admin
+function renderAdminTable(invoices) {
+    const tbody = invoicesTable.querySelector('tbody');
+    tbody.innerHTML = '';
+    invoices.forEach(invoice => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td class="px-6 py-4 table-cell text-sm font-medium text-gray-900">${resident.id_residente}</td>
-            <td class="px-6 py-4 table-cell text-sm text-gray-500">${resident.nombre}</td>
-            <td class="px-6 py-4 table-cell text-sm text-gray-500">${resident.depto}</td>
-            <td class="px-6 py-4 table-cell text-sm font-medium">
-                <button data-id="${resident.id}" class="edit-btn bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-yellow-600">Editar</button>
-                <button data-id="${resident.id}" class="add-invoice-btn bg-blue-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-600">Añadir Factura</button>
+            <td>${invoice.resId}</td>
+            <td>${invoice.name}</td>
+            <td>${invoice.depto}</td>
+            <td>${invoice.username}</td>
+            <td>$${formatCurrency(invoice.amount)}</td>
+            <td>${invoice.invoiceDate}</td>
+            <td><span class="status-badge status-${invoice.status}">${invoice.status}</span></td>
+            <td>${invoice.concept}</td>
+            <td class="table-actions">
+                <button class="btn primary-btn view-btn" data-id="${invoice.id}">Ver</button>
+                <button class="btn secondary-btn edit-btn" data-id="${invoice.id}">Editar</button>
+                <button class="btn tertiary-btn delete-btn" data-id="${invoice.id}">Eliminar</button>
             </td>
         `;
-        tableBody.appendChild(row);
+        tbody.appendChild(row);
     });
+}
 
-    // Event listeners para los botones de la tabla
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const residentId = e.target.dataset.id;
-            const docRef = doc(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/public/data/residents`, residentId);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                document.getElementById('edit-resident-id-input').value = residentId;
-                document.getElementById('edit-resident-name').value = data.nombre;
-                document.getElementById('edit-resident-apt').value = data.depto;
-                document.getElementById('edit-resident-username').value = data.usuario;
-                document.getElementById('edit-resident-password').value = data.contrasena_plain || '';
-                
-                const usernameInput = document.getElementById('edit-resident-username');
-                const passwordInput = document.getElementById('edit-resident-password');
-
-                if (data.credentials_changed) {
-                     usernameInput.disabled = true;
-                     passwordInput.disabled = true;
-                     showMessageModal("Aviso", "Este residente ya cambió sus credenciales. No se pueden editar desde el panel de administrador.", false);
-                } else {
-                     usernameInput.disabled = false;
-                     passwordInput.disabled = false;
-                }
-                
-                document.getElementById('edit-modal').classList.remove('hidden');
-            }
-        });
-    });
-
-    document.querySelectorAll('.add-invoice-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const residentId = e.target.dataset.id;
-            document.getElementById('invoice-resident-id-modal').value = residentId;
-            document.getElementById('add-invoice-modal').classList.remove('hidden');
-        });
-    });
-};
-
-const renderInvoiceResidentSelect = (residents) => {
-    const select = document.getElementById('invoice-resident');
-    select.innerHTML = '';
-    residents.forEach(resident => {
-        const option = document.createElement('option');
-        option.value = resident.id;
-        option.textContent = `${resident.nombre} (Depto: ${resident.depto})`;
-        select.appendChild(option);
-    });
-};
-
-// Maneja el envío del formulario de residente
-document.getElementById('resident-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('resident-name').value;
-    const apt = document.getElementById('resident-apt').value;
-    const username = document.getElementById('resident-username').value;
-    const password = document.getElementById('resident-password').value;
-
-    if (!name || !apt || !username || !password) {
-        showMessageModal("Error", "Todos los campos de residente son obligatorios.", false);
-        return;
-    }
-
-    try {
-        const residentsCollection = collection(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/public/data/residents`);
-        await addDoc(residentsCollection, {
-            id_residente: crypto.randomUUID(), // Genera un ID único
-            nombre: name,
-            depto: apt,
-            usuario: username,
-            contrasena: password, // Almacenado como texto plano, considerar hashing en un entorno real
-            credentials_changed: false
-        });
-        showMessageModal("Éxito", "Residente guardado correctamente.", true);
-        document.getElementById('resident-form').reset();
-    } catch (error) {
-        console.error("Error al guardar residente:", error);
-        showMessageModal("Error", "No se pudo guardar el residente.", false);
-    }
-});
-
-// Maneja el envío del formulario de factura
-document.getElementById('invoice-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const residentId = document.getElementById('invoice-resident').value;
-    await saveInvoice(residentId, document.getElementById('invoice-form'));
-});
-
-// Maneja el envío del formulario de factura del modal
-document.getElementById('add-invoice-form-modal').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const residentId = document.getElementById('invoice-resident-id-modal').value;
-    await saveInvoice(residentId, document.getElementById('add-invoice-form-modal'));
-    document.getElementById('add-invoice-modal').classList.add('hidden');
-});
-
-const saveInvoice = async (residentId, form) => {
-    const concept = form.querySelector('#invoice-concept, #modal-invoice-concept').value;
-    const amount = parseFloat(form.querySelector('#invoice-amount, #modal-invoice-amount').value);
-    const dueDate = form.querySelector('#invoice-due-date, #modal-invoice-due-date').value;
-    const paidDate = form.querySelector('#invoice-paid-date, #modal-invoice-paid-date').value;
-    const status = form.querySelector('#invoice-status, #modal-invoice-status').value;
-
-    if (!concept || isNaN(amount) || !dueDate) {
-        showMessageModal("Error", "Los campos de la factura son obligatorios.", false);
-        return;
-    }
-
-    try {
-        const invoicesCollection = collection(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/public/data/residents/${residentId}/invoices`);
-        await addDoc(invoicesCollection, {
-            concepto_factura: concept,
-            monto_factura: amount,
-            fecha_factura: dueDate,
-            fecha_pago: paidDate || null,
-            factura_estado: status
-        });
-        showMessageModal("Éxito", "Factura guardada correctamente.", true);
-        form.reset();
-    } catch (error) {
-        console.error("Error al guardar factura:", error);
-        showMessageModal("Error", "No se pudo guardar la factura.", false);
-    }
-};
-
-// Cierra el modal de edición
-document.getElementById('close-edit-modal').addEventListener('click', () => {
-    document.getElementById('edit-modal').classList.add('hidden');
-});
-
-// Cierra el modal de añadir factura
-document.getElementById('close-add-invoice-modal').addEventListener('click', () => {
-    document.getElementById('add-invoice-modal').classList.add('hidden');
-});
-
-
-// Maneja el envío del formulario de edición de residente
-document.getElementById('edit-resident-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const residentId = document.getElementById('edit-resident-id-input').value;
-    const name = document.getElementById('edit-resident-name').value;
-    const apt = document.getElementById('edit-resident-apt').value;
-    const username = document.getElementById('edit-resident-username').value;
-    const password = document.getElementById('edit-resident-password').value;
-
-    const residentRef = doc(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/public/data/residents`, residentId);
-
-    try {
-        await updateDoc(residentRef, {
-            nombre: name,
-            depto: apt,
-            usuario: username,
-            contrasena: password
-        });
-        showMessageModal("Éxito", "Residente actualizado correctamente.", true);
-        document.getElementById('edit-modal').classList.add('hidden');
-    } catch (error) {
-        console.error("Error al actualizar residente:", error);
-        showMessageModal("Error", "No se pudo actualizar el residente.", false);
-    }
-});
-
-// --- Lógica del Panel de Residente ---
-const setupResidentPanel = (residentId) => {
-    const invoicesCollection = collection(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/public/data/residents/${residentId}/invoices`);
-    onSnapshot(invoicesCollection, (querySnapshot) => {
-        const invoices = [];
-        querySnapshot.forEach(doc => {
-            invoices.push({ id: doc.id, ...doc.data() });
-        });
-        renderResidentInvoices(invoices);
-    });
-};
-
-const renderResidentInvoices = (invoices) => {
-    const invoicesList = document.getElementById('invoices-list');
-    invoicesList.innerHTML = '';
-
-    if (!invoices.length) {
-        invoicesList.innerHTML = `<p class="text-center text-gray-500">No tienes facturas pendientes.</p>`;
-        return;
-    }
-    
-    invoices.forEach(invoice => {
-        const invoiceDiv = document.createElement('div');
-        invoiceDiv.className = 'bg-gray-50 p-6 rounded-lg shadow-inner flex flex-col md:flex-row justify-between items-center';
-        
-        const invoiceDate = new Date(invoice.fecha_factura + 'T00:00:00');
-        const today = new Date();
-        const isOverdue = invoiceDate < today && invoice.factura_estado !== 'Pagado';
-        
-        invoiceDiv.innerHTML = `
-            <div>
-                <h3 class="text-lg font-bold text-gray-800">${invoice.concepto_factura}</h3>
-                <p class="text-sm text-gray-600">Monto: <span class="font-semibold">$${invoice.monto_factura.toLocaleString('es-CO')}</span></p>
-                <p class="text-sm text-gray-600">Vencimiento: ${invoice.fecha_factura}</p>
-                <p class="text-sm font-semibold ${isOverdue ? 'text-red-500' : 'text-green-500'}">Estado: ${invoice.factura_estado} ${isOverdue ? '(¡Vencida!)' : ''}</p>
-                ${invoice.fecha_pago ? `<p class="text-sm text-gray-600">Fecha de Pago: ${invoice.fecha_pago}</p>` : ''}
-            </div>
-            <div class="mt-4 md:mt-0">
-                <button data-invoice-id="${invoice.id}" class="download-pdf-btn bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Descargar Recibo</button>
-            </div>
-        `;
-        invoicesList.appendChild(invoiceDiv);
-    });
-
-    document.querySelectorAll('.download-pdf-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const invoiceId = e.target.dataset.invoiceId;
-            const invoice = invoices.find(inv => inv.id === invoiceId);
-            if (invoice) {
-                generatePDF(invoice);
-            }
-        });
-    });
-};
-
-// Lógica para cambiar credenciales
-document.getElementById('change-credentials-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const resident = JSON.parse(localStorage.getItem('currentResident'));
-    const currentUsername = document.getElementById('current-username').value;
-    const currentPassword = document.getElementById('current-password').value;
-    const newUsername = document.getElementById('new-username').value;
-    const newPassword = document.getElementById('new-password').value;
-
-    const statusMessage = document.getElementById('credentials-status-message');
-
-    if (resident.usuario !== currentUsername || resident.contrasena !== currentPassword) {
-        statusMessage.textContent = "Usuario o contraseña actual incorrecta.";
-        statusMessage.classList.remove('hidden');
-        statusMessage.classList.add('text-red-500');
-        return;
-    }
-
-    try {
-        const residentRef = doc(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/public/data/residents`, resident.id);
-        await updateDoc(residentRef, {
-            usuario: newUsername,
-            contrasena: newPassword,
-            credentials_changed: true // Previene que el admin los cambie
-        });
-        
-        // Actualizar datos en localStorage
-        resident.usuario = newUsername;
-        resident.contrasena = newPassword;
-        localStorage.setItem('currentResident', JSON.stringify(resident));
-        
-        statusMessage.textContent = "Credenciales actualizadas con éxito.";
-        statusMessage.classList.remove('hidden');
-        statusMessage.classList.remove('text-red-500');
-        statusMessage.classList.add('text-green-500');
-        document.getElementById('change-credentials-form').reset();
-    } catch (error) {
-        console.error("Error al cambiar credenciales:", error);
-        statusMessage.textContent = "Error al actualizar credenciales.";
-        statusMessage.classList.remove('hidden');
-        statusMessage.classList.add('text-red-500');
-    }
-});
-
-// --- Lógica de Autenticación y Carga de Datos ---
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const errorMsg = document.getElementById('error-message');
-    errorMsg.classList.add('hidden');
-
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        showPanel('admin');
-        setupAdminPanel();
-    } else {
-        const residentsCollection = collection(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/public/data/residents`);
-        const q = query(residentsCollection, where("usuario", "==", username), where("contrasena", "==", password));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            const residentDoc = querySnapshot.docs[0];
-            const residentData = { id: residentDoc.id, ...residentDoc.data() };
-            localStorage.setItem('currentResident', JSON.stringify(residentData));
-            showPanel('resident');
-            document.getElementById('resident-title').textContent = `Bienvenido, ${residentData.nombre}`;
-            setupResidentPanel(residentData.id);
-        } else {
-            errorMsg.textContent = "Usuario o contraseña incorrectos.";
-            errorMsg.classList.remove('hidden');
+// Manejar botones de acción de la tabla
+invoicesTable.addEventListener('click', async (e) => {
+    const id = e.target.dataset.id;
+    if (e.target.classList.contains('delete-btn')) {
+        if (confirm('¿Está seguro de que desea eliminar esta factura?')) {
+            await deleteDoc(doc(db, "invoices", id));
+            loadAdminInvoices();
         }
+    } else if (e.target.classList.contains('edit-btn')) {
+        await editInvoice(id);
+    } else if (e.target.classList.contains('view-btn')) {
+        await viewReceipt(id);
     }
 });
 
-// Botones de cerrar sesión
-document.getElementById('logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('currentResident');
-    showPanel('login');
+// Mostrar/Ocultar formulario de factura
+addInvoiceBtn.addEventListener('click', () => {
+    invoiceForm.classList.remove('hidden');
+    invoiceForm.reset();
+    invoiceForm.querySelector('#invoice-is-new').value = 'true';
+    invoiceForm.querySelector('#invoice-pass').disabled = false;
 });
 
-document.getElementById('resident-logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('currentResident');
-    showPanel('login');
+cancelInvoiceBtn.addEventListener('click', () => {
+    invoiceForm.classList.add('hidden');
 });
 
-// --- Generación de PDF ---
-const generatePDF = async (invoice) => {
-    const resident = JSON.parse(localStorage.getItem('currentResident'));
+// Editar factura
+async function editInvoice(id) {
+    const docRef = doc(db, "invoices", id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        invoiceForm.querySelector('#invoice-id').value = id;
+        invoiceForm.querySelector('#invoice-is-new').value = 'false';
+        invoiceForm.querySelector('#invoice-res-id').value = data.resId;
+        invoiceForm.querySelector('#invoice-name').value = data.name;
+        invoiceForm.querySelector('#invoice-depto').value = data.depto;
+        invoiceForm.querySelector('#invoice-user').value = data.username;
+        invoiceForm.querySelector('#invoice-pass').value = data.password;
+        invoiceForm.querySelector('#invoice-pass').disabled = true; // No se puede cambiar la contraseña del admin
+        invoiceForm.querySelector('#invoice-date').value = data.invoiceDate;
+        invoiceForm.querySelector('#invoice-amount').value = data.amount;
+        invoiceForm.querySelector('#invoice-status').value = data.status;
+        invoiceForm.querySelector('#invoice-concept').value = data.concept;
+        invoiceForm.querySelector('#invoice-payment-date').value = data.paymentDate || '';
+        invoiceForm.classList.remove('hidden');
+    }
+}
+
+// Guardar o actualizar factura
+invoiceForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const isNew = invoiceForm.querySelector('#invoice-is-new').value === 'true';
+    const id = invoiceForm.querySelector('#invoice-id').value;
+    const invoiceData = {
+        resId: invoiceForm.querySelector('#invoice-res-id').value,
+        name: invoiceForm.querySelector('#invoice-name').value,
+        depto: invoiceForm.querySelector('#invoice-depto').value,
+        username: invoiceForm.querySelector('#invoice-user').value,
+        password: invoiceForm.querySelector('#invoice-pass').value,
+        invoiceDate: invoiceForm.querySelector('#invoice-date').value,
+        amount: parseFloat(invoiceForm.querySelector('#invoice-amount').value.replace(/\./g, '')),
+        status: invoiceForm.querySelector('#invoice-status').value,
+        concept: invoiceForm.querySelector('#invoice-concept').value,
+        paymentDate: invoiceForm.querySelector('#invoice-payment-date').value || null
+    };
+
+    if (isNew) {
+        await addDoc(collection(db, "invoices"), invoiceData);
+    } else {
+        await updateDoc(doc(db, "invoices", id), invoiceData);
+    }
+
+    invoiceForm.classList.add('hidden');
+    loadAdminInvoices();
+});
+
+// Lógica para subir Excel
+excelUpload.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet);
+
+            for (const row of json) {
+                const invoiceData = {
+                    resId: row['ID Residente'],
+                    name: row['Nombre'],
+                    depto: row['Depto'],
+                    username: row['Usuario'],
+                    password: row['Contraseña'],
+                    invoiceDate: formatDate(row['Fecha Vencimiento']),
+                    amount: parseFloat(String(row['Monto Factura']).replace(/\./g, '')),
+                    status: row['Estado Factura'],
+                    concept: row['Concepto Factura'],
+                    paymentDate: formatDate(row['Fecha de Pago'])
+                };
+                await addDoc(collection(db, "invoices"), invoiceData);
+            }
+            alert('Datos del Excel subidos correctamente.');
+            loadAdminInvoices();
+        };
+        reader.readAsArrayBuffer(file);
+    }
+});
+
+// --- Funciones para el Panel de Residente ---
+
+// Cargar facturas del residente
+async function loadResidentInvoices(resId) {
+    const q = query(collection(db, "invoices"), where("resId", "==", resId));
+    const snapshot = await getDocs(q);
+    const invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderResidentTable(invoices);
+}
+
+// Renderizar la tabla de facturas del residente
+function renderResidentTable(invoices) {
+    const tbody = residentInvoicesTable.querySelector('tbody');
+    tbody.innerHTML = '';
+    invoices.forEach(invoice => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${invoice.concept}</td>
+            <td>$${formatCurrency(invoice.amount)}</td>
+            <td>${invoice.invoiceDate}</td>
+            <td><span class="status-badge status-${invoice.status}">${invoice.status}</span></td>
+            <td>
+                <button class="btn primary-btn view-btn" data-id="${invoice.id}">Ver Recibo</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Manejar botones de ver recibo en el panel de residente
+residentInvoicesTable.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('view-btn')) {
+        const id = e.target.dataset.id;
+        await viewReceipt(id);
+    }
+});
+
+// --- Funciones para el Recibo PDF y Modal ---
+
+// Mostrar el modal del recibo
+async function viewReceipt(id) {
+    const docRef = doc(db, "invoices", id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        const today = new Date();
+        const invoiceDate = new Date(data.invoiceDate);
+        let multa = 0;
+        
+        // Calcular multa si la fecha de vencimiento ya pasó
+        if (data.status === 'Pendiente' && today > invoiceDate) {
+            multa = Math.round(data.amount * 0.05); // Multa del 5%
+        }
+
+        const totalAmount = data.amount + multa;
+        const statusText = data.status === 'Pagada' ? `Pagado el ${data.paymentDate}` : (multa > 0 ? `Vencido con Multa` : `Pendiente`);
+
+        receiptDetailsDiv.innerHTML = `
+            <div class="receipt-header">
+                <img src="logo bahia a.png" alt="Logo Bahía A" class="logo-receipt">
+                <h4>Recibo de Pago</h4>
+            </div>
+            <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString()}</p>
+            <p><strong>Recibo No:</strong> #${id.substring(0, 8).toUpperCase()}</p>
+            <hr>
+            <h5>Detalles del Residente</h5>
+            <p><strong>Nombre:</strong> ${data.name}</p>
+            <p><strong>Departamento:</strong> ${data.depto}</p>
+            <p><strong>ID Residente:</strong> ${data.resId}</p>
+            <hr>
+            <h5>Detalles de la Factura</h5>
+            <p><strong>Concepto:</strong> ${data.concept}</p>
+            <p><strong>Monto Original:</strong> $${formatCurrency(data.amount)}</p>
+            ${multa > 0 ? `<p class="receipt-multa"><strong>Multa por Mora (5%):</strong> $${formatCurrency(multa)}</p>` : ''}
+            <p><strong>Fecha de Vencimiento:</strong> ${data.invoiceDate}</p>
+            <hr>
+            <p><strong>Estado:</strong> <span class="status-badge status-${data.status}">${statusText}</span></p>
+            <p class="receipt-amount"><strong>Total a Pagar:</strong> $${formatCurrency(totalAmount)}</p>
+        `;
+        
+        // Guardar datos del recibo para la descarga
+        downloadReceiptBtn.dataset.invoiceId = id;
+        downloadReceiptBtn.dataset.multa = multa;
+
+        receiptModal.classList.remove('hidden');
+    }
+}
+
+closeModalBtn.addEventListener('click', () => {
+    receiptModal.classList.add('hidden');
+});
+
+// Descargar PDF
+downloadReceiptBtn.addEventListener('click', () => {
+    const id = downloadReceiptBtn.dataset.invoiceId;
+    const multa = downloadReceiptBtn.dataset.multa;
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    const today = new Date();
-    const dueDate = new Date(invoice.fecha_factura);
-    let totalAmount = invoice.monto_factura;
-    let lateFee = 0;
+    const content = document.getElementById('receipt-details');
     
-    // Calcular la multa si la fecha de pago es posterior a la de vencimiento y no está pagada
-    if (invoice.factura_estado !== 'Pagado' && today > dueDate) {
-        lateFee = totalAmount * LATE_FEE_PERCENTAGE;
-        totalAmount += lateFee;
+    // Configura el PDF para una vista profesional
+    doc.setFont("Helvetica");
+    doc.setFontSize(10);
+    doc.text(`Recibo de Pago`, 105, 20, null, null, "center");
+    
+    // Añadir logo
+    const logoImg = new Image();
+    logoImg.src = 'logo bahia a.png';
+    logoImg.onload = function() {
+        doc.addImage(logoImg, 'PNG', 85, 25, 40, 40);
+        
+        html2canvas(content, { scale: 2 }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = 200; 
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            
+            doc.addPage(); // Nueva página para el contenido
+            doc.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
+            doc.save(`Recibo-${id}.pdf`);
+        });
     }
-    
-    // Título del recibo
-    doc.setFontSize(22);
-    doc.text("Recibo de Pago", 20, 20);
-    
-    // Información del Edificio (Simulada)
-    doc.setFontSize(10);
-    doc.text("Gestión de Edificio XYZ", 20, 30);
-    doc.text("Dirección: Calle Falsa 123", 20, 35);
-    doc.text("Teléfono: 555-1234", 20, 40);
-    doc.text(`Fecha de Emisión: ${today.toLocaleDateString()}`, doc.internal.pageSize.getWidth() - 20, 40, { align: 'right' });
-    
-    // Información del Residente
-    doc.setFontSize(12);
-    doc.text(`A nombre de: ${resident.nombre}`, 20, 55);
-    doc.text(`Departamento: ${resident.depto}`, 20, 60);
+});
 
-    // Detalles de la Factura con jspdf-autotable
-    const tableData = [
-        ['ID Factura', invoice.id],
-        ['Concepto', invoice.concepto_factura],
-        ['Monto Original', `$${invoice.monto_factura.toLocaleString('es-CO')}`],
-        ['Fecha de Vencimiento', invoice.fecha_factura],
-        ['Estado', invoice.factura_estado],
-        ... (lateFee > 0 ? [['Multa', `$${lateFee.toLocaleString('es-CO')}`]] : []),
-        ... (invoice.fecha_pago ? [['Fecha de Pago', invoice.fecha_pago]] : []),
-        ['Monto Total', `$${totalAmount.toLocaleString('es-CO')}`]
-    ];
-    
-    doc.autoTable({
-        startY: 70,
-        head: [['Detalle', 'Valor']],
-        body: tableData,
-        theme: 'striped',
-        styles: {
-            fontSize: 10,
-            cellPadding: 3,
-            lineColor: [200, 200, 200],
-            lineWidth: 0.1
-        },
-        headStyles: {
-            fillColor: [22, 101, 242], // Azul de Tailwind 600
-            textColor: 255
-        },
-        bodyStyles: {
-            fillColor: [243, 244, 246] // Gris claro de Tailwind 100
-        }
-    });
 
-    // Pie de página
-    const finalY = doc.autoTable.previous.finalY;
-    doc.setFontSize(10);
-    doc.text("Gracias por su pago.", 20, finalY + 10);
-    doc.text("Este es un recibo generado automáticamente.", 20, finalY + 15);
-    
-    doc.save(`Recibo_Factura_${invoice.concepto_factura}_${invoice.fecha_factura}.pdf`);
-};
+// --- Funciones para el cambio de contraseña del residente ---
+changePassBtn.addEventListener('click', () => {
+    changePassCard.classList.remove('hidden');
+});
 
-// --- Inicio de la Aplicación ---
-setupFirebase();
+cancelPassChangeBtn.addEventListener('click', () => {
+    changePassCard.classList.add('hidden');
+    changePassForm.reset();
+    passErrorMessage.textContent = '';
+});
+
+changePassForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const oldPass = changePassForm['old-password'].value;
+    const newPass = changePassForm['new-password'].value;
+    const confirmPass = changePassForm['confirm-password'].value;
+
+    passErrorMessage.textContent = '';
+
+    if (newPass !== confirmPass) {
+        passErrorMessage.textContent = 'Las nuevas contraseñas no coinciden.';
+        return;
+    }
+
+    const userRef = doc(db, "invoices", currentUser.uid);
+    const userDoc = await getDoc(userRef);
+    const currentPassword = userDoc.data().password;
+
+    if (oldPass !== currentPassword) {
+        passErrorMessage.textContent = 'La contraseña actual es incorrecta.';
+        return;
+    }
+
+    try {
+        await updatePassword(currentUser, newPass);
+        await updateDoc(userRef, { password: newPass });
+        alert('Contraseña actualizada con éxito.');
+        changePassCard.classList.add('hidden');
+        changePassForm.reset();
+    } catch (error) {
+        console.error("Error al actualizar la contraseña:", error);
+        passErrorMessage.textContent = 'Ocurrió un error al cambiar la contraseña. Intente de nuevo.';
+    }
+});
+
+
+// --- Utilidades ---
+function formatCurrency(amount) {
+    if (isNaN(amount)) return amount;
+    return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0 }).format(amount);
+}
+
+function formatDate(excelDate) {
+    if (!excelDate) return null;
+    if (typeof excelDate === 'number') {
+        const date = new Date((excelDate - 25569) * 86400 * 1000);
+        return date.toISOString().split('T')[0];
+    }
+    return excelDate;
+}
