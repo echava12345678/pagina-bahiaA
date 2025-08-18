@@ -41,15 +41,12 @@ const showUploadBillsBtn = document.getElementById('show-upload-bills');
 const addResidentFormSection = document.getElementById('add-resident-form');
 const addBillFormSection = document.getElementById('add-bill-form');
 const uploadBillsSection = document.getElementById('upload-bills-section');
-const cancelAddResidentBtn = document.getElementById('cancel-add-resident');
-const cancelAddBillBtn = document.getElementById('cancel-add-bill');
 const changeCredentialsForm = document.getElementById('change-credentials-form');
 const changeCredentialsFormInner = document.getElementById('change-credentials-form-inner');
 const showChangePasswordBtn = document.getElementById('show-change-password-form');
 const credentialsError = document.getElementById('credentials-error');
 const credentialsSuccess = document.getElementById('credentials-success');
 const loadingSpinner = document.getElementById('loading-spinner');
-const cancelChangeCredentialsBtn = document.getElementById('cancel-change-credentials');
 
 // Global variables
 let currentResidentId = null;
@@ -70,10 +67,16 @@ function hideSpinner() {
     loadingSpinner.style.display = 'none';
 }
 
-function toggleSection(sectionId) {
-    const section = document.getElementById(sectionId);
-    document.querySelectorAll('.form-section').forEach(s => s.classList.add('hidden'));
-    section.classList.toggle('hidden');
+// Función para mostrar/ocultar secciones de formularios
+function toggleSection(sectionIdToShow) {
+    const sections = [addResidentFormSection, addBillFormSection, uploadBillsSection, changeCredentialsForm];
+    sections.forEach(section => {
+        if (section && section.id === sectionIdToShow) {
+            section.classList.toggle('hidden');
+        } else if (section) {
+            section.classList.add('hidden');
+        }
+    });
 }
 
 function formatDate(timestamp) {
@@ -146,10 +149,9 @@ residentLogoutBtn.addEventListener('click', () => {
 
 // --- Admin Panel Functions ---
 
+// Event listeners para mostrar formularios
 showAddResidentBtn.addEventListener('click', () => toggleSection('add-resident-form'));
-cancelAddResidentBtn.addEventListener('click', () => toggleSection('add-resident-form'));
 showAddBillBtn.addEventListener('click', () => toggleSection('add-bill-form'));
-cancelAddBillBtn.addEventListener('click', () => toggleSection('add-bill-form'));
 showUploadBillsBtn.addEventListener('click', () => toggleSection('upload-bills-section'));
 
 // Resident CRUD operations
@@ -179,7 +181,7 @@ residentForm.addEventListener('submit', async (e) => {
         alert('Error al agregar residente.');
     } finally {
         hideSpinner();
-        addResidentFormSection.classList.add('hidden');
+        toggleSection(null); // Ocultar todos los formularios
     }
 });
 
@@ -233,6 +235,31 @@ residentsTableBody.addEventListener('click', (e) => {
     }
 });
 
+// New function to delete a resident and their bills
+async function deleteResident(residentId) {
+    showSpinner();
+    try {
+        // 1. Eliminar todas las facturas del residente
+        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
+        const batch = db.batch();
+        billsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        // 2. Eliminar el documento del residente
+        await db.collection('residents').doc(residentId).delete();
+
+        alert('Residente y sus facturas eliminados exitosamente.');
+        loadResidents(); // Recargar la tabla
+    } catch (err) {
+        console.error("Error deleting resident:", err);
+        alert('Error al eliminar residente.');
+    } finally {
+        hideSpinner();
+    }
+}
+
 // Search functionality
 residentSearch.addEventListener('input', (e) => {
     const filter = e.target.value.toLowerCase();
@@ -278,12 +305,12 @@ billForm.addEventListener('submit', async (e) => {
         alert('Error al agregar factura.');
     } finally {
         hideSpinner();
-        addBillFormSection.classList.add('hidden');
+        toggleSection(null);
     }
 });
 
 // Handle Excel file upload
-excelFile.addEventListener('change', (e) => {
+excelFile.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     showSpinner();
@@ -314,11 +341,12 @@ excelFile.addEventListener('change', (e) => {
 
         try {
             const batch = db.batch();
-            rows.forEach(row => {
+            for (const row of rows) {
                 if (row[idIndex]) {
                     const billRef = db.collection('bills').doc();
-                    const dueDate = new Date(row[dueDateIndex]);
-                    const paymentDate = row[paymentDateIndex] ? new Date(row[paymentDateIndex]) : null;
+                    const dueDate = new Date((row[dueDateIndex] - (25567 + 1)) * 86400 * 1000); // Excel date to JS Date
+                    const paymentDate = row[paymentDateIndex] ? new Date((row[paymentDateIndex] - (25567 + 1)) * 86400 * 1000) : null;
+                    
                     batch.set(billRef, {
                         residentId: row[idIndex].toString(),
                         dueDate: firebase.firestore.Timestamp.fromDate(dueDate),
@@ -329,7 +357,7 @@ excelFile.addEventListener('change', (e) => {
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 }
-            });
+            }
             await batch.commit();
             alert('Facturas cargadas exitosamente desde Excel.');
             loadResidents();
@@ -338,6 +366,7 @@ excelFile.addEventListener('change', (e) => {
             alert('Error al cargar las facturas. Verifica el formato del archivo.');
         } finally {
             hideSpinner();
+            toggleSection(null);
         }
     };
     reader.readAsArrayBuffer(file);
@@ -363,7 +392,7 @@ async function showBillHistory(residentId) {
                     <td>${formatDate(bill.dueDate)}</td>
                     <td>${formatCurrency(bill.amount)}</td>
                     <td>${bill.concept}</td>
-                    <td class="status-${bill.status.toLowerCase()}">${bill.status}</td>
+                    <td class="status-${bill.status.toLowerCase().replace(' ', '-')}">${bill.status}</td>
                     <td>${formatDate(bill.paymentDate)}</td>
                     <td>
                         <button class="btn secondary-btn edit-bill-btn" data-id="${doc.id}">
@@ -480,15 +509,6 @@ document.body.addEventListener('click', (e) => {
             if (modal.id === 'edit-bill-modal' && currentResidentId) {
                 showBillHistory(currentResidentId);
             }
-        }
-    }
-    
-    // Cierra cualquier sección de formulario si el clic fue en un botón de cancelación
-    const cancelBtn = e.target.closest('.cancel-btn');
-    if (cancelBtn) {
-        const formSection = cancelBtn.closest('.form-section');
-        if (formSection) {
-            formSection.classList.add('hidden');
         }
     }
 });
@@ -686,5 +706,6 @@ changeCredentialsFormInner.addEventListener('submit', async (e) => {
         credentialsError.textContent = 'Error al cambiar credenciales. Intenta de nuevo.';
     } finally {
         hideSpinner();
+        toggleSection(null);
     }
 });
