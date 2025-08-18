@@ -1,6 +1,6 @@
 // Importa las funciones necesarias de los SDKs de Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js";
 
 // Configuración de Firebase
@@ -18,6 +18,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Configurar la persistencia de la sesión
+setPersistence(auth, browserSessionPersistence);
 
 // Referencias a los elementos del DOM
 const loginSection = document.getElementById('login-section');
@@ -51,12 +54,12 @@ let currentUser;
 let isUserAdmin = false;
 
 // Oculta el loader al cargar la página
-window.onload = () => {
+window.addEventListener('load', () => {
     loader.style.opacity = '0';
     setTimeout(() => {
         loader.style.display = 'none';
     }, 500);
-};
+});
 
 // Maneja el estado de la autenticación
 onAuthStateChanged(auth, async (user) => {
@@ -69,8 +72,10 @@ onAuthStateChanged(auth, async (user) => {
             isUserAdmin = userDoc.data().role === 'admin';
             displayDashboard(isUserAdmin, userDoc.data());
         } else {
+            // Si el usuario existe en Auth pero no en Firestore, cerrar sesión
             console.error("No se encontraron datos de usuario en Firestore.");
             signOut(auth);
+            displayLogin();
         }
     } else {
         displayLogin();
@@ -108,50 +113,55 @@ loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = loginForm.username.value;
     const password = loginForm.password.value;
-
-    try {
-        // Buscar si el usuario existe en la colección 'invoices'
-        const q = query(collection(db, "invoices"), where("username", "==", username));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            errorMessage.textContent = 'Usuario o contraseña incorrectos.';
-            return;
-        }
-
-        const userData = querySnapshot.docs[0].data();
-        const userPassword = userData.password;
-        
-        if (password !== userPassword) {
-            errorMessage.textContent = 'Usuario o contraseña incorrectos.';
-            return;
-        }
-
-        // Si las credenciales son correctas, intentar autenticarse en Firebase Auth
-        const userEmail = `${username}@temp.com`; // Email temporal para Firebase Auth
-        let userCredential;
-
+    errorMessage.textContent = '';
+    
+    // Primero, intentar iniciar sesión como administrador
+    if (username === 'admin@bahia.com' && password === 'admin123') {
         try {
-            userCredential = await signInWithEmailAndPassword(auth, userEmail, userPassword);
-        } catch (authError) {
-            // Si el usuario no existe en Firebase Auth, lo crea
-            if (authError.code === 'auth/user-not-found') {
-                userCredential = await auth.createUserWithEmailAndPassword(userEmail, userPassword);
-                await setDoc(doc(db, "users", userCredential.user.uid), {
-                    role: 'resident',
-                    resId: userData.resId,
-                    depto: userData.depto,
-                    username: userData.username,
-                    invoiceId: querySnapshot.docs[0].id
-                });
-            } else {
-                throw authError;
-            }
+            const userCredential = await signInWithEmailAndPassword(auth, username, password);
+            const userDocRef = doc(db, "users", userCredential.user.uid);
+            await setDoc(userDocRef, { role: 'admin' }, { merge: true });
+        } catch (error) {
+            errorMessage.textContent = 'Error al iniciar sesión como admin. Verifique las credenciales.';
+            console.error("Error de login de admin:", error);
         }
-        
-    } catch (error) {
-        errorMessage.textContent = 'Error al iniciar sesión. Verifique las credenciales.';
-        console.error("Error de login:", error);
+        return;
+    }
+
+    // Si no es admin, buscar en la base de datos de facturas para un residente
+    const q = query(collection(db, "invoices"), where("username", "==", username));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
+        return;
+    }
+
+    const userData = querySnapshot.docs[0].data();
+    
+    if (password !== userData.password) {
+        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
+        return;
+    }
+
+    // Autenticar al residente con el correo temporal
+    const userEmail = `${username}@temp.com`;
+    try {
+        await signInWithEmailAndPassword(auth, userEmail, password);
+    } catch (authError) {
+        if (authError.code === 'auth/user-not-found') {
+            const userCredential = await auth.createUserWithEmailAndPassword(userEmail, password);
+            await setDoc(doc(db, "users", userCredential.user.uid), {
+                role: 'resident',
+                resId: userData.resId,
+                depto: userData.depto,
+                username: userData.username,
+                invoiceId: querySnapshot.docs[0].id
+            });
+        } else {
+            errorMessage.textContent = 'Error al iniciar sesión. Intente de nuevo.';
+            console.error("Error de autenticación:", authError);
+        }
     }
 });
 
@@ -162,7 +172,6 @@ logoutBtn.addEventListener('click', async () => {
 
 // --- Funciones para el Panel de Administrador ---
 
-// Cargar facturas del admin
 async function loadAdminInvoices() {
     const invoicesCol = collection(db, "invoices");
     const snapshot = await getDocs(invoicesCol);
@@ -170,7 +179,6 @@ async function loadAdminInvoices() {
     renderAdminTable(invoices);
 }
 
-// Renderizar la tabla de facturas del admin
 function renderAdminTable(invoices) {
     const tbody = invoicesTable.querySelector('tbody');
     tbody.innerHTML = '';
@@ -195,7 +203,6 @@ function renderAdminTable(invoices) {
     });
 }
 
-// Manejar botones de acción de la tabla
 invoicesTable.addEventListener('click', async (e) => {
     const id = e.target.dataset.id;
     if (e.target.classList.contains('delete-btn')) {
@@ -210,7 +217,6 @@ invoicesTable.addEventListener('click', async (e) => {
     }
 });
 
-// Mostrar/Ocultar formulario de factura
 addInvoiceBtn.addEventListener('click', () => {
     invoiceForm.classList.remove('hidden');
     invoiceForm.reset();
@@ -222,7 +228,6 @@ cancelInvoiceBtn.addEventListener('click', () => {
     invoiceForm.classList.add('hidden');
 });
 
-// Editar factura
 async function editInvoice(id) {
     const docRef = doc(db, "invoices", id);
     const docSnap = await getDoc(docRef);
@@ -235,7 +240,7 @@ async function editInvoice(id) {
         invoiceForm.querySelector('#invoice-depto').value = data.depto;
         invoiceForm.querySelector('#invoice-user').value = data.username;
         invoiceForm.querySelector('#invoice-pass').value = data.password;
-        invoiceForm.querySelector('#invoice-pass').disabled = true; // No se puede cambiar la contraseña del admin
+        invoiceForm.querySelector('#invoice-pass').disabled = true;
         invoiceForm.querySelector('#invoice-date').value = data.invoiceDate;
         invoiceForm.querySelector('#invoice-amount').value = data.amount;
         invoiceForm.querySelector('#invoice-status').value = data.status;
@@ -245,7 +250,6 @@ async function editInvoice(id) {
     }
 }
 
-// Guardar o actualizar factura
 invoiceForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const isNew = invoiceForm.querySelector('#invoice-is-new').value === 'true';
@@ -309,7 +313,6 @@ excelUpload.addEventListener('change', async (e) => {
 
 // --- Funciones para el Panel de Residente ---
 
-// Cargar facturas del residente
 async function loadResidentInvoices(resId) {
     const q = query(collection(db, "invoices"), where("resId", "==", resId));
     const snapshot = await getDocs(q);
@@ -317,7 +320,6 @@ async function loadResidentInvoices(resId) {
     renderResidentTable(invoices);
 }
 
-// Renderizar la tabla de facturas del residente
 function renderResidentTable(invoices) {
     const tbody = residentInvoicesTable.querySelector('tbody');
     tbody.innerHTML = '';
@@ -336,7 +338,6 @@ function renderResidentTable(invoices) {
     });
 }
 
-// Manejar botones de ver recibo en el panel de residente
 residentInvoicesTable.addEventListener('click', async (e) => {
     if (e.target.classList.contains('view-btn')) {
         const id = e.target.dataset.id;
@@ -346,7 +347,6 @@ residentInvoicesTable.addEventListener('click', async (e) => {
 
 // --- Funciones para el Recibo PDF y Modal ---
 
-// Mostrar el modal del recibo
 async function viewReceipt(id) {
     const docRef = doc(db, "invoices", id);
     const docSnap = await getDoc(docRef);
@@ -356,9 +356,8 @@ async function viewReceipt(id) {
         const invoiceDate = new Date(data.invoiceDate);
         let multa = 0;
         
-        // Calcular multa si la fecha de vencimiento ya pasó
         if (data.status === 'Pendiente' && today > invoiceDate) {
-            multa = Math.round(data.amount * 0.05); // Multa del 5%
+            multa = Math.round(data.amount * 0.05);
         }
 
         const totalAmount = data.amount + multa;
@@ -387,7 +386,6 @@ async function viewReceipt(id) {
             <p class="receipt-amount"><strong>Total a Pagar:</strong> $${formatCurrency(totalAmount)}</p>
         `;
         
-        // Guardar datos del recibo para la descarga
         downloadReceiptBtn.dataset.invoiceId = id;
         downloadReceiptBtn.dataset.multa = multa;
 
@@ -399,20 +397,16 @@ closeModalBtn.addEventListener('click', () => {
     receiptModal.classList.add('hidden');
 });
 
-// Descargar PDF
 downloadReceiptBtn.addEventListener('click', () => {
     const id = downloadReceiptBtn.dataset.invoiceId;
-    const multa = downloadReceiptBtn.dataset.multa;
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const content = document.getElementById('receipt-details');
     
-    // Configura el PDF para una vista profesional
     doc.setFont("Helvetica");
     doc.setFontSize(10);
     doc.text(`Recibo de Pago`, 105, 20, null, null, "center");
     
-    // Añadir logo
     const logoImg = new Image();
     logoImg.src = 'logo bahia a.png';
     logoImg.onload = function() {
@@ -420,14 +414,14 @@ downloadReceiptBtn.addEventListener('click', () => {
         
         html2canvas(content, { scale: 2 }).then(canvas => {
             const imgData = canvas.toDataURL('image/png');
-            const imgWidth = 200; 
+            const imgWidth = 200;
             const imgHeight = canvas.height * imgWidth / canvas.width;
             
-            doc.addPage(); // Nueva página para el contenido
+            doc.addPage();
             doc.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
             doc.save(`Recibo-${id}.pdf`);
         });
-    }
+    };
 });
 
 
@@ -455,7 +449,6 @@ changePassForm.addEventListener('submit', async (e) => {
         return;
     }
 
-    // Obtener la contraseña actual del documento de Firestore del usuario
     const userDocRef = doc(db, "users", currentUser.uid);
     const userDoc = await getDoc(userDocRef);
 
@@ -466,7 +459,6 @@ changePassForm.addEventListener('submit', async (e) => {
         
         if (invoiceDoc.exists() && oldPass === invoiceDoc.data().password) {
             try {
-                // Actualizar la contraseña en Firebase Auth y Firestore
                 await updatePassword(currentUser, newPass);
                 await updateDoc(invoiceDocRef, { password: newPass });
                 alert('Contraseña actualizada con éxito.');
