@@ -3,372 +3,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Edificio Bahia-A</title>
+    <title>Gestión de Edificio</title>
+    <!-- Tailwind CSS para diseño profesional y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body>
+<body class="bg-gray-100 font-sans antialiased">
 
-    <div id="loading-spinner" class="spinner-container">
-        <div class="spinner"></div>
+    <!-- Contenedor Principal de la Aplicación -->
+    <div id="app" class="flex flex-col items-center justify-center min-h-screen p-4">
+
+        <!-- Formulario de Inicio de Sesión -->
+        <div id="login-container" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Iniciar Sesión</h1>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-gray-700 text-sm font-semibold mb-2">Usuario</label>
+                    <input type="text" id="username" name="username" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ingrese su usuario" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-gray-700 text-sm font-semibold mb-2">Contraseña</label>
+                    <input type="password" id="password" name="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ingrese su contraseña" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Entrar</button>
+            </form>
+            <p id="error-message" class="text-red-500 text-center mt-4 hidden"></p>
+        </div>
+
+        <!-- Panel de Administrador -->
+        <div id="admin-panel" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-5xl hidden my-8">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">Panel de Administrador</h1>
+                <button id="logout-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300">Cerrar Sesión</button>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Formulario para agregar/editar residentes -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-inner">
+                    <h2 class="text-2xl font-semibold text-gray-700 mb-4">Añadir/Editar Residente</h2>
+                    <form id="resident-form">
+                        <input type="hidden" id="resident-id-input">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="col-span-2 md:col-span-1">
+                                <label for="resident-name" class="block text-sm font-medium text-gray-700">Nombre</label>
+                                <input type="text" id="resident-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="col-span-2 md:col-span-1">
+                                <label for="resident-apt" class="block text-sm font-medium text-gray-700">Departamento</label>
+                                <input type="text" id="resident-apt" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="col-span-2 md:col-span-1">
+                                <label for="resident-username" class="block text-sm font-medium text-gray-700">Usuario</label>
+                                <input type="text" id="resident-username" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="col-span-2 md:col-span-1">
+                                <label for="resident-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                                <input type="password" id="resident-password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                        <button type="submit" class="mt-6 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Guardar Residente</button>
+                    </form>
+                </div>
+                
+                <!-- Formulario para agregar facturas -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-inner">
+                    <h2 class="text-2xl font-semibold text-gray-700 mb-4">Añadir Factura</h2>
+                    <form id="invoice-form">
+                        <div class="mb-4">
+                            <label for="invoice-resident" class="block text-sm font-medium text-gray-700">Residente</label>
+                            <select id="invoice-resident" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                                <!-- Opciones cargadas dinámicamente -->
+                            </select>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="invoice-concept" class="block text-sm font-medium text-gray-700">Concepto</label>
+                                <input type="text" id="invoice-concept" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Administración, Multa" required>
+                            </div>
+                            <div>
+                                <label for="invoice-amount" class="block text-sm font-medium text-gray-700">Monto</label>
+                                <input type="number" step="0.01" id="invoice-amount" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: 400000.50" required>
+                            </div>
+                            <div>
+                                <label for="invoice-due-date" class="block text-sm font-medium text-gray-700">Fecha de Vencimiento</label>
+                                <input type="date" id="invoice-due-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <div>
+                                <label for="invoice-paid-date" class="block text-sm font-medium text-gray-700">Fecha de Pago (Opcional)</label>
+                                <input type="date" id="invoice-paid-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="col-span-2">
+                                <label for="invoice-status" class="block text-sm font-medium text-gray-700">Estado de Factura</label>
+                                <select id="invoice-status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                                    <option value="Pendiente">Pendiente</option>
+                                    <option value="Pagado">Pagado</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="mt-6 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Guardar Factura</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla de Residentes -->
+            <div class="mt-8 bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Residentes del Edificio</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departamento</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="residents-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Filas de residentes cargadas dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Residente -->
+        <div id="resident-panel" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-5xl hidden my-8">
+            <div class="flex justify-between items-center mb-6">
+                <h1 id="resident-title" class="text-3xl font-bold text-gray-800"></h1>
+                <button id="resident-logout-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300">Cerrar Sesión</button>
+            </div>
+            
+            <!-- Resumen y Facturas -->
+            <div>
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Mis Facturas</h2>
+                <div id="invoices-list" class="space-y-4">
+                    <!-- Facturas cargadas dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Formulario para cambiar credenciales -->
+            <div class="mt-8 bg-gray-50 p-6 rounded-lg shadow-inner">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Cambiar Credenciales</h2>
+                <form id="change-credentials-form">
+                    <div class="mb-4">
+                        <label for="current-username" class="block text-sm font-medium text-gray-700">Usuario Actual</label>
+                        <input type="text" id="current-username" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="current-password" class="block text-sm font-medium text-gray-700">Contraseña Actual</label>
+                        <input type="password" id="current-password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="new-username" class="block text-sm font-medium text-gray-700">Nuevo Usuario</label>
+                        <input type="text" id="new-username" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="new-password" class="block text-sm font-medium text-gray-700">Nueva Contraseña</label>
+                        <input type="password" id="new-password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300">Cambiar Credenciales</button>
+                    <p id="credentials-status-message" class="text-center mt-4 hidden"></p>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modales para editar y agregar factura -->
+    <div id="edit-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-xl font-bold mb-4">Editar Residente</h3>
+            <form id="edit-resident-form">
+                <input type="hidden" id="edit-resident-id-input">
+                <div class="mb-4">
+                    <label for="edit-resident-name" class="block text-sm font-medium text-gray-700">Nombre</label>
+                    <input type="text" id="edit-resident-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit-resident-apt" class="block text-sm font-medium text-gray-700">Departamento</label>
+                    <input type="text" id="edit-resident-apt" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit-resident-username" class="block text-sm font-medium text-gray-700">Usuario</label>
+                    <input type="text" id="edit-resident-username" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit-resident-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                    <input type="text" id="edit-resident-password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="close-edit-modal" class="py-2 px-4 bg-gray-500 text-white rounded-md hover:bg-gray-600">Cerrar</button>
+                    <button type="submit" class="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <div id="login-page" class="page active">
-        <div class="login-container">
-            <h1 class="logo-text">
-                <img src="logo bahia a.png" alt="Logo de Edificio Bahia-A" class="logo-image">
-                Gestión de Edificio Bahia-A
-            </h1>
-            <p>Inicia sesión para acceder a tu panel.</p>
-            <form id="login-form">
-                <div class="input-group">
-                    <label for="login-user-type">Tipo de Usuario</label>
-                    <select id="login-user-type" required>
-                        <option value="admin">Administrador</option>
-                        <option value="resident">Residente</option>
+    <!-- Modal para agregar factura -->
+    <div id="add-invoice-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-xl font-bold mb-4">Añadir Nueva Factura</h3>
+            <form id="add-invoice-form-modal">
+                <input type="hidden" id="invoice-resident-id-modal">
+                <div class="mb-4">
+                    <label for="modal-invoice-concept" class="block text-sm font-medium text-gray-700">Concepto</label>
+                    <input type="text" id="modal-invoice-concept" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label for="modal-invoice-amount" class="block text-sm font-medium text-gray-700">Monto</label>
+                    <input type="number" step="0.01" id="modal-invoice-amount" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label for="modal-invoice-due-date" class="block text-sm font-medium text-gray-700">Fecha de Vencimiento</label>
+                    <input type="date" id="modal-invoice-due-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label for="modal-invoice-paid-date" class="block text-sm font-medium text-gray-700">Fecha de Pago</label>
+                    <input type="date" id="modal-invoice-paid-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div class="mb-4">
+                    <label for="modal-invoice-status" class="block text-sm font-medium text-gray-700">Estado de Factura</label>
+                    <select id="modal-invoice-status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Pagado">Pagado</option>
                     </select>
                 </div>
-                <div class="input-group">
-                    <label for="login-username">Usuario</label>
-                    <input type="text" id="login-username" required>
-                </div>
-                <div class="input-group">
-                    <label for="login-password">Contraseña</label>
-                    <input type="password" id="login-password" required>
-                </div>
-                <button type="submit" class="btn primary-btn">
-                    <i class="fas fa-sign-in-alt"></i>
-                    Ingresar
-                </button>
-                <div id="login-error" class="error-message"></div>
-            </form>
-        </div>
-    </div>
-
-    <div id="admin-panel" class="page">
-        <div class="panel-container">
-            <aside class="sidebar">
-                <h2>Menú</h2>
-                <nav>
-                    <ul>
-                        <li id="admin-dashboard-link" class="active">
-                            <span><i class="fas fa-chart-line"></i><span>Panel</span></span>
-                        </li>
-                        <li id="admin-residents-link">
-                            <span><i class="fas fa-users"></i><span>Residentes</span></span>
-                        </li>
-                        <li id="admin-bills-link">
-                            <span><i class="fas fa-file-invoice-dollar"></i><span>Cuentas</span></span>
-                        </li>
-                        <li id="admin-credentials-link">
-                            <span><i class="fas fa-key"></i><span>Credenciales</span></span>
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
-            <div class="main-content">
-                <header>
-                    <div class="header-content">
-                        <div class="user-info">
-                            <span id="admin-welcome">Bienvenido, Admin</span>
-                            <button id="admin-logout-btn" class="btn logout-btn"><i class="fas fa-sign-out-alt"></i>Salir</button>
-                        </div>
-                    </div>
-                </header>
-                
-                <main>
-                    <div id="admin-dashboard-section" class="content-section active-content">
-                        <div class="section-header">
-                            <h3>Resumen del Edificio</h3>
-                        </div>
-                        <div class="card-grid">
-                            <div class="card">
-                                <h4>Residentes Totales</h4>
-                                <p class="value" id="total-residents-card">0</p>
-                            </div>
-                            <div class="card">
-                                <h4>Apartamentos Ocupados</h4>
-                                <p class="value" id="occupied-apartments-card">0</p>
-                            </div>
-                            <div class="card">
-                                <h4>Deudas Pendientes</h4>
-                                <p class="value" id="pending-bills-card">0</p>
-                            </div>
-                            <div class="card">
-                                <h4>Ingresos Totales</h4>
-                                <p class="value" id="total-income-card">$0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="admin-residents-section" class="content-section">
-                        <div class="section-header">
-                            <h3>Gestión de Residentes</h3>
-                            <button id="add-resident-btn" class="btn primary-btn"><i class="fas fa-plus"></i>Agregar Residente</button>
-                        </div>
-                        <div class="table-container">
-                            <table id="residents-table">
-                                <thead>
-                                    <tr>
-                                        <th>Nombre</th>
-                                        <th>Apartamento</th>
-                                        <th>Teléfono</th>
-                                        <th>Email</th>
-                                        <th>Usuario</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div id="admin-bills-section" class="content-section">
-                        <div class="section-header">
-                            <h3>Gestión de Cuentas</h3>
-                            <button id="add-bill-btn" class="btn primary-btn"><i class="fas fa-plus"></i>Agregar Cuenta</button>
-                        </div>
-                        <div class="table-container">
-                            <table id="bills-table">
-                                <thead>
-                                    <tr>
-                                        <th>Apartamento</th>
-                                        <th>Monto</th>
-                                        <th>Fecha de Emisión</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div id="admin-credentials-section" class="content-section">
-                        <div class="section-header">
-                            <h3>Cambiar Credenciales de Administrador</h3>
-                        </div>
-                        <form id="change-admin-credentials-form" class="form-grid single-column">
-                            <div class="input-group">
-                                <label for="admin-old-username">Usuario Actual</label>
-                                <input type="text" id="admin-old-username" required>
-                            </div>
-                            <div class="input-group">
-                                <label for="admin-old-password">Contraseña Actual</label>
-                                <input type="password" id="admin-old-password" required>
-                            </div>
-                            <div class="input-group">
-                                <label for="admin-new-username">Nuevo Usuario</label>
-                                <input type="text" id="admin-new-username" required>
-                            </div>
-                            <div class="input-group">
-                                <label for="admin-new-password">Nueva Contraseña</label>
-                                <input type="password" id="admin-new-password" required>
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn primary-btn"><i class="fas fa-save"></i>Guardar Cambios</button>
-                            </div>
-                            <div id="admin-credentials-success" class="success-message"></div>
-                            <div id="admin-credentials-error" class="error-message"></div>
-                        </form>
-                    </div>
-                </main>
-            </div>
-        </div>
-    </div>
-
-    <div id="resident-panel" class="page">
-        <div class="panel-container">
-            <aside class="sidebar">
-                <h2>Menú</h2>
-                <nav>
-                    <ul>
-                        <li id="resident-dashboard-link" class="active">
-                            <span><i class="fas fa-chart-line"></i><span>Panel</span></span>
-                        </li>
-                        <li id="resident-bills-link">
-                            <span><i class="fas fa-file-invoice-dollar"></i><span>Mis Cuentas</span></span>
-                        </li>
-                        <li id="resident-credentials-link">
-                            <span><i class="fas fa-key"></i><span>Mis Credenciales</span></span>
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
-            <div class="main-content">
-                <header>
-                    <div class="header-content">
-                        <div class="user-info">
-                            <span id="resident-welcome">Bienvenido, Residente</span>
-                            <button id="resident-logout-btn" class="btn logout-btn"><i class="fas fa-sign-out-alt"></i>Salir</button>
-                        </div>
-                    </div>
-                </header>
-
-                <main>
-                    <div id="resident-dashboard-section" class="content-section active-content">
-                        <div class="section-header">
-                            <h3>Resumen</h3>
-                        </div>
-                        <div class="card-grid">
-                            <div class="card">
-                                <h4>Saldo Pendiente</h4>
-                                <p class="value" id="pending-amount-card">$0</p>
-                            </div>
-                            <div class="card">
-                                <h4>Facturas Pagadas</h4>
-                                <p class="value" id="paid-bills-card">0</p>
-                            </div>
-                            <div class="card">
-                                <h4>Último Pago</h4>
-                                <p class="value" id="last-payment-card">$0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="resident-bills-section" class="content-section">
-                        <div class="section-header">
-                            <h3>Mis Cuentas</h3>
-                        </div>
-                        <div class="table-container">
-                            <table id="resident-bills-table">
-                                <thead>
-                                    <tr>
-                                        <th>Fecha de Emisión</th>
-                                        <th>Monto</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <div id="resident-credentials-section" class="content-section">
-                        <div class="section-header">
-                            <h3>Cambiar Mis Credenciales</h3>
-                        </div>
-                        <form id="change-resident-credentials-form" class="form-grid single-column">
-                            <div class="input-group">
-                                <label for="old-username">Usuario Actual</label>
-                                <input type="text" id="old-username" required>
-                            </div>
-                            <div class="input-group">
-                                <label for="old-password">Contraseña Actual</label>
-                                <input type="password" id="old-password" required>
-                            </div>
-                            <div class="input-group">
-                                <label for="new-username">Nuevo Usuario</label>
-                                <input type="text" id="new-username" required>
-                            </div>
-                            <div class="input-group">
-                                <label for="new-password">Nueva Contraseña</label>
-                                <input type="password" id="new-password" required>
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn primary-btn"><i class="fas fa-save"></i>Guardar Cambios</button>
-                            </div>
-                            <div id="credentials-success" class="success-message"></div>
-                            <div id="credentials-error" class="error-message"></div>
-                        </form>
-                    </div>
-                </main>
-            </div>
-        </div>
-    </div>
-
-    <div id="resident-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h3 id="resident-modal-title">Agregar Residente</h3>
-            <form id="resident-form" class="form-grid">
-                <input type="hidden" id="resident-id-input">
-                <div class="input-group">
-                    <label for="resident-name">Nombre Completo</label>
-                    <input type="text" id="resident-name" required>
-                </div>
-                <div class="input-group">
-                    <label for="resident-apartment">Apartamento</label>
-                    <input type="text" id="resident-apartment" required>
-                </div>
-                <div class="input-group">
-                    <label for="resident-phone">Teléfono</label>
-                    <input type="tel" id="resident-phone">
-                </div>
-                <div class="input-group">
-                    <label for="resident-email">Email</label>
-                    <input type="email" id="resident-email">
-                </div>
-                <div class="input-group">
-                    <label for="resident-username">Usuario</label>
-                    <input type="text" id="resident-username" required>
-                </div>
-                <div class="input-group">
-                    <label for="resident-password">Contraseña</label>
-                    <input type="password" id="resident-password" required>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn secondary-btn" id="close-resident-modal"><i class="fas fa-times"></i>Cancelar</button>
-                    <button type="submit" class="btn primary-btn" id="save-resident-btn"><i class="fas fa-save"></i>Guardar</button>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="close-add-invoice-modal" class="py-2 px-4 bg-gray-500 text-white rounded-md hover:bg-gray-600">Cerrar</button>
+                    <button type="submit" class="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">Guardar Factura</button>
                 </div>
             </form>
         </div>
     </div>
-
-    <div id="bill-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h3 id="bill-modal-title">Agregar Cuenta</h3>
-            <form id="bill-form" class="form-grid">
-                <input type="hidden" id="bill-id-input">
-                <div class="input-group">
-                    <label for="bill-apartment">Apartamento</label>
-                    <input type="text" id="bill-apartment" required>
-                </div>
-                <div class="input-group">
-                    <label for="bill-amount">Monto</label>
-                    <input type="number" id="bill-amount" required>
-                </div>
-                <div class="input-group">
-                    <label for="bill-description">Descripción (opcional)</label>
-                    <textarea id="bill-description"></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn secondary-btn" id="close-bill-modal"><i class="fas fa-times"></i>Cancelar</button>
-                    <button type="submit" class="btn primary-btn" id="save-bill-btn"><i class="fas fa-save"></i>Guardar</button>
-                </div>
-            </form>
+    
+    <!-- Modal para mensajes de éxito/error -->
+    <div id="message-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white text-center">
+            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
+            <p id="modal-message" class="mb-4"></p>
+            <button id="close-message-modal" class="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">Aceptar</button>
         </div>
     </div>
 
-    <div id="bill-history-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h3 id="bill-history-modal-title">Historial de Pagos</h3>
-            <div class="table-container">
-                <table id="bill-history-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Monto</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div class="form-actions">
-                <button type="button" class="btn secondary-btn" id="close-history-modal"><i class="fas fa-times"></i>Cerrar</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
-    <script src="script.js"></script>
-
+    <!-- Scripts de Librerías -->
+    <!-- Firebase SDKs -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+    <!-- jsPDF para generar recibos en PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- Tu Script de Lógica -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>
