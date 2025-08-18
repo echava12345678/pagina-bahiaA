@@ -1,43 +1,381 @@
-/*
- * Archivo: style.css
- * Estilos personalizados para la aplicación de gestión de edificio.
- * Se complementan con las clases de Tailwind CSS para un diseño moderno.
- */
+/* Variables CSS */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --tertiary-color: #28a745;
+    --background-color: #f0f2f5;
+    --card-background: #ffffff;
+    --text-color: #333;
+    --heading-color: #2c3e50;
+    --border-color: #e0e0e0;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --hover-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
 
-/* Fuente Inter para toda la página */
+/* Estilos Generales */
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
 }
 
-/* Estilos de botones para un look más profesional */
-button {
-    transition: all 0.2s ease-in-out;
+.hidden {
+    display: none !important;
 }
 
-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+/* Contenedor Principal */
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
 }
 
-/* Animación de carga para botones */
-.btn-loading {
-    cursor: not-allowed;
-    opacity: 0.6;
+/* Encabezado de la página de login */
+.header-login {
+    text-align: center;
+    margin-bottom: 40px;
 }
 
-/* Estilos para la tabla */
-.table-cell {
-    white-space: nowrap;
+.header-login .logo {
+    width: 150px;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+.header-login h1 {
+    color: var(--heading-color);
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+/* Tarjeta de Login */
+.login-card {
+    background-color: var(--card-background);
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    max-width: 450px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Paneles de Dashboard */
+.panel {
+    background-color: var(--card-background);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin-top: 20px;
+}
+
+.panel h3 {
+    color: var(--heading-color);
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+/* Componentes de Formulario y Botones */
+.input-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--text-color);
+}
+
+.input-group input, .input-group select {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.input-group input:focus, .input-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.primary-btn {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+.primary-btn:hover {
+    background-color: #0056b3;
+    box-shadow: var(--hover-shadow);
+}
+
+.secondary-btn {
+    background-color: var(--secondary-color);
+    color: #fff;
+}
+
+.secondary-btn:hover {
+    background-color: #5a6268;
+    box-shadow: var(--hover-shadow);
+}
+
+.tertiary-btn {
+    background-color: var(--tertiary-color);
+    color: #fff;
+}
+
+.tertiary-btn:hover {
+    background-color: #218838;
+    box-shadow: var(--hover-shadow);
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.9rem;
+    margin-top: -10px;
+    text-align: center;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background-color: var(--card-background);
+    box-shadow: var(--shadow);
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.dashboard-logo-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.dashboard-logo-title .logo-header {
+    width: 50px;
+    height: auto;
+}
+
+.dashboard-logo-title h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--heading-color);
+}
+
+/* Controles de Admin */
+.admin-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.file-input {
+    display: none;
+}
+
+.form-card {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Tablas */
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--card-background);
+    border-radius: 8px;
     overflow: hidden;
-    text-overflow: ellipsis;
+    box-shadow: var(--shadow);
 }
 
-/* Estilos para el modal */
-#edit-modal, #add-invoice-modal, #message-modal {
+th, td {
+    text-align: left;
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    background-color: var(--primary-color);
+    color: #fff;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+.table-actions .btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
+/* Panel del Residente */
+.resident-info-card {
+    background-color: #e6f7ff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 5px solid var(--primary-color);
+}
+
+.resident-info-card h4 {
+    margin-top: 0;
+}
+
+.change-pass-card {
+    background-color: #fff3e0;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 5px solid #ff9800;
+}
+
+/* Modal del Recibo */
+.modal {
+    position: fixed;
     z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-/* Estilos para los campos de entrada */
-input, select {
-    border-radius: 0.5rem;
+.modal-content {
+    background-color: var(--card-background);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 25px;
+    color: var(--secondary-color);
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.close-btn:hover {
+    color: #dc3545;
+}
+
+#receipt-details {
+    padding: 20px;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+#receipt-details h4 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+#receipt-details p {
+    margin: 8px 0;
+    font-size: 1rem;
+}
+
+#receipt-details .receipt-amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--tertiary-color);
+}
+
+#receipt-details .receipt-multa {
+    color: #dc3545;
+    font-weight: 700;
+}
+
+/* Spinner de carga */
+#loader {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.spinner {
+    border: 6px solid rgba(0, 0, 0, 0.1);
+    border-left-color: var(--primary-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
