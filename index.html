@@ -3,257 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Edificio</title>
-    <!-- Tailwind CSS para diseño profesional y responsivo -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Administración Edificio Bahía A</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-100 font-sans antialiased">
+<body>
 
-    <!-- Contenedor Principal de la Aplicación -->
-    <div id="app" class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
 
-        <!-- Formulario de Inicio de Sesión -->
-        <div id="login-container" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Iniciar Sesión</h1>
-            <form id="login-form">
-                <div class="mb-4">
-                    <label for="username" class="block text-gray-700 text-sm font-semibold mb-2">Usuario</label>
-                    <input type="text" id="username" name="username" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ingrese su usuario" required>
+    <main class="container">
+
+        <section id="login-section">
+            <header class="header-login">
+                <img src="logo bahia a.png" alt="Logo Bahía A" class="logo">
+                <h1>Acceso al Portal de Residentes</h1>
+            </header>
+            <form id="login-form" class="login-card">
+                <div class="input-group">
+                    <label for="username">Usuario</label>
+                    <input type="text" id="username" placeholder="Ingrese su usuario" required>
                 </div>
-                <div class="mb-6">
-                    <label for="password" class="block text-gray-700 text-sm font-semibold mb-2">Contraseña</label>
-                    <input type="password" id="password" name="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ingrese su contraseña" required>
+                <div class="input-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" placeholder="Ingrese su contraseña" required>
                 </div>
-                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Entrar</button>
+                <button type="submit" class="btn primary-btn">Ingresar</button>
+                <div id="error-message" class="error-message"></div>
             </form>
-            <p id="error-message" class="text-red-500 text-center mt-4 hidden"></p>
-        </div>
+        </section>
 
-        <!-- Panel de Administrador -->
-        <div id="admin-panel" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-5xl hidden my-8">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-3xl font-bold text-gray-800">Panel de Administrador</h1>
-                <button id="logout-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300">Cerrar Sesión</button>
-            </div>
-            
-            <div class="grid md:grid-cols-2 gap-8">
-                <!-- Formulario para agregar/editar residentes -->
-                <div class="bg-gray-50 p-6 rounded-lg shadow-inner">
-                    <h2 class="text-2xl font-semibold text-gray-700 mb-4">Añadir/Editar Residente</h2>
-                    <form id="resident-form">
-                        <input type="hidden" id="resident-id-input">
-                        <div class="grid md:grid-cols-2 gap-4">
-                            <div class="col-span-2 md:col-span-1">
-                                <label for="resident-name" class="block text-sm font-medium text-gray-700">Nombre</label>
-                                <input type="text" id="resident-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div class="col-span-2 md:col-span-1">
-                                <label for="resident-apt" class="block text-sm font-medium text-gray-700">Departamento</label>
-                                <input type="text" id="resident-apt" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div class="col-span-2 md:col-span-1">
-                                <label for="resident-username" class="block text-sm font-medium text-gray-700">Usuario</label>
-                                <input type="text" id="resident-username" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div class="col-span-2 md:col-span-1">
-                                <label for="resident-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
-                                <input type="password" id="resident-password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                        </div>
-                        <button type="submit" class="mt-6 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Guardar Residente</button>
-                    </form>
+        <section id="dashboard-section" class="hidden">
+            <header class="dashboard-header">
+                <div class="dashboard-logo-title">
+                    <img src="logo bahia a.png" alt="Logo Bahía A" class="logo-header">
+                    <h2>Panel de Control</h2>
                 </div>
-                
-                <!-- Formulario para agregar facturas -->
-                <div class="bg-gray-50 p-6 rounded-lg shadow-inner">
-                    <h2 class="text-2xl font-semibold text-gray-700 mb-4">Añadir Factura</h2>
-                    <form id="invoice-form">
-                        <div class="mb-4">
-                            <label for="invoice-resident" class="block text-sm font-medium text-gray-700">Residente</label>
-                            <select id="invoice-resident" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
-                                <!-- Opciones cargadas dinámicamente -->
+                <nav class="dashboard-nav">
+                    <button id="logout-btn" class="btn secondary-btn">Cerrar Sesión</button>
+                </nav>
+            </header>
+
+            <div id="admin-panel" class="panel hidden">
+                <h3>Gestión de Facturas</h3>
+                <div class="admin-controls">
+                    <button id="add-invoice-btn" class="btn primary-btn">Agregar Factura</button>
+                    <input type="file" id="excel-upload" accept=".xlsx, .xls" class="file-input">
+                    <label for="excel-upload" class="btn tertiary-btn">Subir Excel</label>
+                </div>
+
+                <form id="invoice-form" class="form-card hidden">
+                    <h4>Datos de la Factura</h4>
+                    <div class="form-row">
+                        <input type="hidden" id="invoice-id">
+                        <input type="hidden" id="invoice-is-new" value="true">
+                        <div class="input-group">
+                            <label for="invoice-res-id">ID Residente</label>
+                            <input type="text" id="invoice-res-id" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="invoice-name">Nombre</label>
+                            <input type="text" id="invoice-name" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="invoice-depto">Depto.</label>
+                            <input type="text" id="invoice-depto" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="invoice-user">Usuario</label>
+                            <input type="text" id="invoice-user" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="invoice-pass">Contraseña</label>
+                            <input type="text" id="invoice-pass" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label for="invoice-date">Fecha de Vencimiento</label>
+                            <input type="date" id="invoice-date" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="invoice-amount">Monto ($)</label>
+                            <input type="text" id="invoice-amount" placeholder="Ej: 400.000" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="invoice-status">Estado</label>
+                            <select id="invoice-status" required>
+                                <option value="Pendiente">Pendiente</option>
+                                <option value="Pagada">Pagada</option>
                             </select>
                         </div>
-                        <div class="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="invoice-concept" class="block text-sm font-medium text-gray-700">Concepto</label>
-                                <input type="text" id="invoice-concept" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Administración, Multa" required>
-                            </div>
-                            <div>
-                                <label for="invoice-amount" class="block text-sm font-medium text-gray-700">Monto</label>
-                                <input type="number" step="0.01" id="invoice-amount" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: 400000.50" required>
-                            </div>
-                            <div>
-                                <label for="invoice-due-date" class="block text-sm font-medium text-gray-700">Fecha de Vencimiento</label>
-                                <input type="date" id="invoice-due-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
-                            </div>
-                            <div>
-                                <label for="invoice-paid-date" class="block text-sm font-medium text-gray-700">Fecha de Pago (Opcional)</label>
-                                <input type="date" id="invoice-paid-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div class="col-span-2">
-                                <label for="invoice-status" class="block text-sm font-medium text-gray-700">Estado de Factura</label>
-                                <select id="invoice-status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
-                                    <option value="Pendiente">Pendiente</option>
-                                    <option value="Pagado">Pagado</option>
-                                </select>
-                            </div>
+                        <div class="input-group">
+                            <label for="invoice-concept">Concepto</label>
+                            <input type="text" id="invoice-concept" placeholder="Ej: Administración, Multa" required>
                         </div>
-                        <button type="submit" class="mt-6 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Guardar Factura</button>
-                    </form>
-                </div>
-            </div>
+                        <div class="input-group">
+                            <label for="invoice-payment-date">Fecha de Pago</label>
+                            <input type="date" id="invoice-payment-date">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary-btn">Guardar Factura</button>
+                        <button type="button" id="cancel-invoice-btn" class="btn secondary-btn">Cancelar</button>
+                    </div>
+                </form>
 
-            <!-- Tabla de Residentes -->
-            <div class="mt-8 bg-white p-6 rounded-xl shadow-lg">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Residentes del Edificio</h2>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                <div class="table-container">
+                    <table id="invoices-table">
+                        <thead>
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departamento</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                <th>ID Res.</th>
+                                <th>Nombre</th>
+                                <th>Depto.</th>
+                                <th>Usuario</th>
+                                <th>Monto</th>
+                                <th>Vencimiento</th>
+                                <th>Estado</th>
+                                <th>Concepto</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="residents-table-body" class="bg-white divide-y divide-gray-200">
-                            <!-- Filas de residentes cargadas dinámicamente -->
-                        </tbody>
+                        <tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
-        </div>
 
-        <!-- Panel de Residente -->
-        <div id="resident-panel" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-5xl hidden my-8">
-            <div class="flex justify-between items-center mb-6">
-                <h1 id="resident-title" class="text-3xl font-bold text-gray-800"></h1>
-                <button id="resident-logout-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300">Cerrar Sesión</button>
+            <div id="resident-panel" class="panel hidden">
+                <h3>Resumen de Facturas</h3>
+                <div class="resident-info-card">
+                    <h4>Datos Personales</h4>
+                    <p><strong>Usuario:</strong> <span id="res-username"></span></p>
+                    <p><strong>Depto:</strong> <span id="res-depto"></span></p>
+                    <button id="change-pass-btn" class="btn secondary-btn">Cambiar Contraseña</button>
+                </div>
+                
+                <div class="change-pass-card hidden">
+                    <h4>Cambiar Contraseña</h4>
+                    <form id="change-pass-form">
+                        <div class="input-group">
+                            <label for="old-password">Contraseña Actual</label>
+                            <input type="password" id="old-password" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="new-password">Nueva Contraseña</label>
+                            <input type="password" id="new-password" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="confirm-password">Confirmar Contraseña</label>
+                            <input type="password" id="confirm-password" required>
+                        </div>
+                        <div id="pass-error-message" class="error-message"></div>
+                        <div class="form-actions">
+                             <button type="submit" class="btn primary-btn">Guardar Cambios</button>
+                             <button type="button" id="cancel-pass-change" class="btn secondary-btn">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-container">
+                    <table id="resident-invoices-table">
+                        <thead>
+                            <tr>
+                                <th>Concepto</th>
+                                <th>Monto</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
             </div>
-            
-            <!-- Resumen y Facturas -->
-            <div>
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Mis Facturas</h2>
-                <div id="invoices-list" class="space-y-4">
-                    <!-- Facturas cargadas dinámicamente -->
-                </div>
-            </div>
 
-            <!-- Formulario para cambiar credenciales -->
-            <div class="mt-8 bg-gray-50 p-6 rounded-lg shadow-inner">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Cambiar Credenciales</h2>
-                <form id="change-credentials-form">
-                    <div class="mb-4">
-                        <label for="current-username" class="block text-sm font-medium text-gray-700">Usuario Actual</label>
-                        <input type="text" id="current-username" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="current-password" class="block text-sm font-medium text-gray-700">Contraseña Actual</label>
-                        <input type="password" id="current-password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="new-username" class="block text-sm font-medium text-gray-700">Nuevo Usuario</label>
-                        <input type="text" id="new-username" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
-                    </div>
-                    <div class="mb-6">
-                        <label for="new-password" class="block text-sm font-medium text-gray-700">Nueva Contraseña</label>
-                        <input type="password" id="new-password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
-                    </div>
-                    <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300">Cambiar Credenciales</button>
-                    <p id="credentials-status-message" class="text-center mt-4 hidden"></p>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Modales para editar y agregar factura -->
-    <div id="edit-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 class="text-xl font-bold mb-4">Editar Residente</h3>
-            <form id="edit-resident-form">
-                <input type="hidden" id="edit-resident-id-input">
-                <div class="mb-4">
-                    <label for="edit-resident-name" class="block text-sm font-medium text-gray-700">Nombre</label>
-                    <input type="text" id="edit-resident-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+        </section>
+
+    </main>
+
+    <div id="receipt-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <div id="receipt-details">
                 </div>
-                <div class="mb-4">
-                    <label for="edit-resident-apt" class="block text-sm font-medium text-gray-700">Departamento</label>
-                    <input type="text" id="edit-resident-apt" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div class="mb-4">
-                    <label for="edit-resident-username" class="block text-sm font-medium text-gray-700">Usuario</label>
-                    <input type="text" id="edit-resident-username" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div class="mb-4">
-                    <label for="edit-resident-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
-                    <input type="text" id="edit-resident-password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div class="flex justify-end space-x-2">
-                    <button type="button" id="close-edit-modal" class="py-2 px-4 bg-gray-500 text-white rounded-md hover:bg-gray-600">Cerrar</button>
-                    <button type="submit" class="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">Guardar Cambios</button>
-                </div>
-            </form>
+            <button id="download-receipt-btn" class="btn primary-btn">Descargar Recibo en PDF</button>
         </div>
     </div>
 
-    <!-- Modal para agregar factura -->
-    <div id="add-invoice-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 class="text-xl font-bold mb-4">Añadir Nueva Factura</h3>
-            <form id="add-invoice-form-modal">
-                <input type="hidden" id="invoice-resident-id-modal">
-                <div class="mb-4">
-                    <label for="modal-invoice-concept" class="block text-sm font-medium text-gray-700">Concepto</label>
-                    <input type="text" id="modal-invoice-concept" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div class="mb-4">
-                    <label for="modal-invoice-amount" class="block text-sm font-medium text-gray-700">Monto</label>
-                    <input type="number" step="0.01" id="modal-invoice-amount" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div class="mb-4">
-                    <label for="modal-invoice-due-date" class="block text-sm font-medium text-gray-700">Fecha de Vencimiento</label>
-                    <input type="date" id="modal-invoice-due-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div class="mb-4">
-                    <label for="modal-invoice-paid-date" class="block text-sm font-medium text-gray-700">Fecha de Pago</label>
-                    <input type="date" id="modal-invoice-paid-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div class="mb-4">
-                    <label for="modal-invoice-status" class="block text-sm font-medium text-gray-700">Estado de Factura</label>
-                    <select id="modal-invoice-status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="Pagado">Pagado</option>
-                    </select>
-                </div>
-                <div class="flex justify-end space-x-2">
-                    <button type="button" id="close-add-invoice-modal" class="py-2 px-4 bg-gray-500 text-white rounded-md hover:bg-gray-600">Cerrar</button>
-                    <button type="submit" class="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">Guardar Factura</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Modal para mensajes de éxito/error -->
-    <div id="message-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white text-center">
-            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
-            <p id="modal-message" class="mb-4"></p>
-            <button id="close-message-modal" class="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">Aceptar</button>
-        </div>
-    </div>
-
-    <!-- Scripts de Librerías -->
-    <!-- Firebase SDKs -->
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-    <!-- jsPDF para generar recibos en PDF -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script type="module" src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <!-- Tu Script de Lógica -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <script type="module" src="script.js"></script>
+
 </body>
 </html>
