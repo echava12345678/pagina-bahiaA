@@ -1,9 +1,4 @@
-// Importa las funciones necesarias de los SDKs de Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js";
-
-// Configuración de Firebase
+// Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyBQQbZeHBV9thJ0iy3c30k3ERCYvRoDQMM",
     authDomain: "bahiaa.firebaseapp.com",
@@ -14,476 +9,687 @@ const firebaseConfig = {
     measurementId: "G-C3DWGGH4KY"
 };
 
-// Inicializa Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-// Configurar la persistencia de la sesión en el navegador
-setPersistence(auth, browserSessionPersistence);
-
-// Referencias a los elementos del DOM
-const loginSection = document.getElementById('login-section');
-const dashboardSection = document.getElementById('dashboard-section');
-const loginForm = document.getElementById('login-form');
-const errorMessage = document.getElementById('error-message');
+// DOM Elements
+const loginPage = document.getElementById('login-page');
 const adminPanel = document.getElementById('admin-panel');
 const residentPanel = document.getElementById('resident-panel');
+const loginForm = document.getElementById('login-form');
+const loginError = document.getElementById('login-error');
 const logoutBtn = document.getElementById('logout-btn');
-const invoicesTable = document.getElementById('invoices-table');
-const residentInvoicesTable = document.getElementById('resident-invoices-table');
-const addInvoiceBtn = document.getElementById('add-invoice-btn');
-const invoiceForm = document.getElementById('invoice-form');
-const cancelInvoiceBtn = document.getElementById('cancel-invoice-btn');
-const excelUpload = document.getElementById('excel-upload');
-const changePassBtn = document.getElementById('change-pass-btn');
-const changePassCard = document.querySelector('.change-pass-card');
-const changePassForm = document.getElementById('change-pass-form');
-const passErrorMessage = document.getElementById('pass-error-message');
-const cancelPassChangeBtn = document.getElementById('cancel-pass-change');
-const residentUsernameSpan = document.getElementById('res-username');
-const residentDeptoSpan = document.getElementById('res-depto');
-const receiptModal = document.getElementById('receipt-modal');
-const receiptDetailsDiv = document.getElementById('receipt-details');
-const downloadReceiptBtn = document.getElementById('download-receipt-btn');
-const closeModalBtn = document.querySelector('.close-btn');
-const loader = document.getElementById('loader');
+const residentLogoutBtn = document.getElementById('resident-logout-btn');
+const residentForm = document.getElementById('resident-form');
+const billForm = document.getElementById('bill-form');
+const residentsTableBody = document.querySelector('#residents-table tbody');
+const residentBillsTableBody = document.querySelector('#resident-bills-table tbody');
+const residentWelcome = document.getElementById('resident-welcome');
+const adminWelcome = document.getElementById('admin-welcome');
+const billHistoryModal = document.getElementById('bill-history-modal');
+const billHistoryTableBody = document.querySelector('#bill-history-table tbody');
+const modalTitle = document.getElementById('modal-title');
+const editBillModal = document.getElementById('edit-bill-modal');
+const editBillForm = document.getElementById('edit-bill-form');
+const residentSearch = document.getElementById('resident-search');
+const excelFile = document.getElementById('excel-file');
+const showAddResidentBtn = document.getElementById('show-add-resident-form');
+const showAddBillBtn = document.getElementById('show-add-bill-form');
+const showUploadBillsBtn = document.getElementById('show-upload-bills');
+const addResidentFormSection = document.getElementById('add-resident-form');
+const addBillFormSection = document.getElementById('add-bill-form');
+const uploadBillsSection = document.getElementById('upload-bills-section');
+const cancelAddResidentBtn = document.getElementById('cancel-add-resident');
+const cancelAddBillBtn = document.getElementById('cancel-add-bill');
+const changeCredentialsForm = document.getElementById('change-credentials-form');
+const changeCredentialsFormInner = document.getElementById('change-credentials-form-inner');
+const showChangePasswordBtn = document.getElementById('show-change-password-form');
+const credentialsError = document.getElementById('credentials-error');
+const credentialsSuccess = document.getElementById('credentials-success');
+const loadingSpinner = document.getElementById('loading-spinner');
+const cancelChangeCredentialsBtn = document.getElementById('cancel-change-credentials');
 
-// Variables globales para la sesión del usuario
-let currentUser;
-let isUserAdmin = false;
+// Global variables
+let currentResidentId = null;
 
-// Maneja el estado de la autenticación
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        currentUser = user;
-        const userDocRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
+// --- Utility Functions ---
 
-        if (userDoc.exists()) {
-            isUserAdmin = userDoc.data().role === 'admin';
-            displayDashboard(isUserAdmin, userDoc.data());
-        } else {
-            // Si el usuario existe en Auth pero no en Firestore, cerrar sesión para evitar errores
-            console.error("No se encontraron datos de usuario en Firestore.");
-            signOut(auth);
-            displayLogin();
-        }
-    } else {
-        displayLogin();
-    }
-    // Oculta el loader una vez que el estado de autenticación se ha resuelto
-    loader.style.opacity = '0';
-    setTimeout(() => {
-        loader.style.display = 'none';
-    }, 500);
-});
-
-// Función para mostrar la vista de login
-function displayLogin() {
-    dashboardSection.classList.add('hidden');
-    loginSection.classList.remove('hidden');
-    errorMessage.textContent = '';
-    loginForm.reset();
+function showPage(page) {
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(p => p.classList.remove('active'));
+    page.classList.add('active');
 }
 
-// Función para mostrar el dashboard según el rol
-async function displayDashboard(isAdmin, userData) {
-    loginSection.classList.add('hidden');
-    dashboardSection.classList.remove('hidden');
-
-    if (isAdmin) {
-        adminPanel.classList.remove('hidden');
-        residentPanel.classList.add('hidden');
-        await loadAdminInvoices();
-    } else {
-        adminPanel.classList.add('hidden');
-        residentPanel.classList.remove('hidden');
-        residentUsernameSpan.textContent = userData.username;
-        residentDeptoSpan.textContent = userData.depto;
-        await loadResidentInvoices(userData.resId);
-    }
+function showSpinner() {
+    loadingSpinner.style.display = 'flex';
 }
 
-// Lógica de inicio de sesión
+function hideSpinner() {
+    loadingSpinner.style.display = 'none';
+}
+
+function toggleSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    document.querySelectorAll('.form-section').forEach(s => s.classList.add('hidden'));
+    section.classList.toggle('hidden');
+}
+
+function formatDate(timestamp) {
+    if (!timestamp || !timestamp.seconds) return '';
+    const date = new Date(timestamp.seconds * 1000);
+    return date.toLocaleDateString('es-CO');
+}
+
+function parseCurrency(value) {
+    if (typeof value !== 'string') return value;
+    const cleanValue = value.replace(/\./g, '').replace(',', '.');
+    return parseFloat(cleanValue);
+}
+
+function formatCurrency(value) {
+    if (typeof value !== 'number' || isNaN(value)) return '$0';
+    return '$' + value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+// --- Login & Authentication ---
+
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = loginForm.username.value;
-    const password = loginForm.password.value;
-    errorMessage.textContent = '';
-    
-    // Intenta iniciar sesión como administrador
-    if (username === 'admin') {
-        const adminEmail = 'admin@bahia.com';
-        try {
-            const userCredential = await signInWithEmailAndPassword(auth, adminEmail, password);
-            const userDocRef = doc(db, "users", userCredential.user.uid);
-            await setDoc(userDocRef, { role: 'admin' }, { merge: true });
-        } catch (error) {
-            errorMessage.textContent = 'Error al iniciar sesión como admin. Verifique las credenciales.';
-            console.error("Error de login de admin:", error);
-        }
-        return;
-    }
+    const username = loginForm['username-login'].value;
+    const password = loginForm['password-login'].value;
+    loginError.textContent = '';
+    showSpinner();
 
-    // Si no es admin, busca al usuario residente en Firestore
-    const q = query(collection(db, "invoices"), where("username", "==", username));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
-        return;
-    }
-
-    const userData = querySnapshot.docs[0].data();
-    
-    if (password !== userData.password) {
-        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
-        return;
-    }
-
-    // Autentica al residente con el correo temporal
-    const userEmail = `${username}@temp.com`;
     try {
-        await signInWithEmailAndPassword(auth, userEmail, password);
-    } catch (authError) {
-        if (authError.code === 'auth/user-not-found') {
-            const userCredential = await auth.createUserWithEmailAndPassword(userEmail, password);
-            await setDoc(doc(db, "users", userCredential.user.uid), {
-                role: 'resident',
-                resId: userData.resId,
-                depto: userData.depto,
-                username: userData.username,
-                invoiceId: querySnapshot.docs[0].id
-            });
+        if (username === 'admin' && password === 'admin123') { // Simple admin check
+            showPage(adminPanel);
+            loadResidents();
+            auth.signInWithEmailAndPassword('admin@edificio.com', password) // Use a static email for Firebase auth
+                .catch(err => console.error("Admin Auth Error:", err));
         } else {
-            errorMessage.textContent = 'Error al iniciar sesión. Intente de nuevo.';
-            console.error("Error de autenticación:", authError);
-        }
-    }
-});
+            const residentSnapshot = await db.collection('residents').where('username', '==', username).limit(1).get();
+            if (!residentSnapshot.empty) {
+                const resident = residentSnapshot.docs[0].data();
+                const residentId = residentSnapshot.docs[0].id;
 
-// Lógica de cierre de sesión
-logoutBtn.addEventListener('click', async () => {
-    await signOut(auth);
-});
-
-// --- Funciones para el Panel de Administrador ---
-
-async function loadAdminInvoices() {
-    const invoicesCol = collection(db, "invoices");
-    const snapshot = await getDocs(invoicesCol);
-    const invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderAdminTable(invoices);
-}
-
-function renderAdminTable(invoices) {
-    const tbody = invoicesTable.querySelector('tbody');
-    tbody.innerHTML = '';
-    invoices.forEach(invoice => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${invoice.resId}</td>
-            <td>${invoice.name}</td>
-            <td>${invoice.depto}</td>
-            <td>${invoice.username}</td>
-            <td>$${formatCurrency(invoice.amount)}</td>
-            <td>${invoice.invoiceDate}</td>
-            <td><span class="status-badge status-${invoice.status}">${invoice.status}</span></td>
-            <td>${invoice.concept}</td>
-            <td class="table-actions">
-                <button class="btn primary-btn view-btn" data-id="${invoice.id}">Ver</button>
-                <button class="btn secondary-btn edit-btn" data-id="${invoice.id}">Editar</button>
-                <button class="btn tertiary-btn delete-btn" data-id="${invoice.id}">Eliminar</button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-invoicesTable.addEventListener('click', async (e) => {
-    const id = e.target.dataset.id;
-    if (e.target.classList.contains('delete-btn')) {
-        if (confirm('¿Está seguro de que desea eliminar esta factura?')) {
-            await deleteDoc(doc(db, "invoices", id));
-            loadAdminInvoices();
-        }
-    } else if (e.target.classList.contains('edit-btn')) {
-        await editInvoice(id);
-    } else if (e.target.classList.contains('view-btn')) {
-        await viewReceipt(id);
-    }
-});
-
-addInvoiceBtn.addEventListener('click', () => {
-    invoiceForm.classList.remove('hidden');
-    invoiceForm.reset();
-    invoiceForm.querySelector('#invoice-is-new').value = 'true';
-    invoiceForm.querySelector('#invoice-pass').disabled = false;
-});
-
-cancelInvoiceBtn.addEventListener('click', () => {
-    invoiceForm.classList.add('hidden');
-});
-
-async function editInvoice(id) {
-    const docRef = doc(db, "invoices", id);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-        const data = docSnap.data();
-        invoiceForm.querySelector('#invoice-id').value = id;
-        invoiceForm.querySelector('#invoice-is-new').value = 'false';
-        invoiceForm.querySelector('#invoice-res-id').value = data.resId;
-        invoiceForm.querySelector('#invoice-name').value = data.name;
-        invoiceForm.querySelector('#invoice-depto').value = data.depto;
-        invoiceForm.querySelector('#invoice-user').value = data.username;
-        invoiceForm.querySelector('#invoice-pass').value = data.password;
-        invoiceForm.querySelector('#invoice-pass').disabled = true;
-        invoiceForm.querySelector('#invoice-date').value = data.invoiceDate;
-        invoiceForm.querySelector('#invoice-amount').value = data.amount;
-        invoiceForm.querySelector('#invoice-status').value = data.status;
-        invoiceForm.querySelector('#invoice-concept').value = data.concept;
-        invoiceForm.querySelector('#invoice-payment-date').value = data.paymentDate || '';
-        invoiceForm.classList.remove('hidden');
-    }
-}
-
-invoiceForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const isNew = invoiceForm.querySelector('#invoice-is-new').value === 'true';
-    const id = invoiceForm.querySelector('#invoice-id').value;
-    const invoiceData = {
-        resId: invoiceForm.querySelector('#invoice-res-id').value,
-        name: invoiceForm.querySelector('#invoice-name').value,
-        depto: invoiceForm.querySelector('#invoice-depto').value,
-        username: invoiceForm.querySelector('#invoice-user').value,
-        password: invoiceForm.querySelector('#invoice-pass').value,
-        invoiceDate: invoiceForm.querySelector('#invoice-date').value,
-        amount: parseFloat(invoiceForm.querySelector('#invoice-amount').value.replace(/\./g, '')),
-        status: invoiceForm.querySelector('#invoice-status').value,
-        concept: invoiceForm.querySelector('#invoice-concept').value,
-        paymentDate: invoiceForm.querySelector('#invoice-payment-date').value || null
-    };
-
-    if (isNew) {
-        await addDoc(collection(db, "invoices"), invoiceData);
-    } else {
-        await updateDoc(doc(db, "invoices", id), invoiceData);
-    }
-
-    invoiceForm.classList.add('hidden');
-    loadAdminInvoices();
-});
-
-// Lógica para subir Excel
-excelUpload.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const data = new Uint8Array(event.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(worksheet);
-
-            for (const row of json) {
-                const invoiceData = {
-                    resId: row['ID Residente'],
-                    name: row['Nombre'],
-                    depto: row['Depto'],
-                    username: row['Usuario'],
-                    password: row['Contraseña'],
-                    invoiceDate: formatDate(row['Fecha Vencimiento']),
-                    amount: parseFloat(String(row['Monto Factura']).replace(/\./g, '')),
-                    status: row['Estado Factura'],
-                    concept: row['Concepto Factura'],
-                    paymentDate: formatDate(row['Fecha de Pago'])
-                };
-                await addDoc(collection(db, "invoices"), invoiceData);
+                if (resident.password === password) {
+                    showPage(residentPanel);
+                    residentWelcome.textContent = `Bienvenido, ${resident.name}`;
+                    currentResidentId = residentId;
+                    loadResidentBills(currentResidentId);
+                } else {
+                    loginError.textContent = 'Contraseña incorrecta.';
+                }
+            } else {
+                loginError.textContent = 'Usuario no encontrado.';
             }
-            alert('Datos del Excel subidos correctamente.');
-            loadAdminInvoices();
-        };
-        reader.readAsArrayBuffer(file);
-    }
-});
-
-// --- Funciones para el Panel de Residente ---
-
-async function loadResidentInvoices(resId) {
-    const q = query(collection(db, "invoices"), where("resId", "==", resId));
-    const snapshot = await getDocs(q);
-    const invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderResidentTable(invoices);
-}
-
-function renderResidentTable(invoices) {
-    const tbody = residentInvoicesTable.querySelector('tbody');
-    tbody.innerHTML = '';
-    invoices.forEach(invoice => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${invoice.concept}</td>
-            <td>$${formatCurrency(invoice.amount)}</td>
-            <td>${invoice.invoiceDate}</td>
-            <td><span class="status-badge status-${invoice.status}">${invoice.status}</span></td>
-            <td>
-                <button class="btn primary-btn view-btn" data-id="${invoice.id}">Ver Recibo</button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-residentInvoicesTable.addEventListener('click', async (e) => {
-    if (e.target.classList.contains('view-btn')) {
-        const id = e.target.dataset.id;
-        await viewReceipt(id);
-    }
-});
-
-// --- Funciones para el Recibo PDF y Modal ---
-
-async function viewReceipt(id) {
-    const docRef = doc(db, "invoices", id);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-        const data = docSnap.data();
-        const today = new Date();
-        const invoiceDate = new Date(data.invoiceDate);
-        let multa = 0;
-        
-        if (data.status === 'Pendiente' && today > invoiceDate) {
-            multa = Math.round(data.amount * 0.05);
         }
-
-        const totalAmount = data.amount + multa;
-        const statusText = data.status === 'Pagada' ? `Pagado el ${data.paymentDate}` : (multa > 0 ? `Vencido con Multa` : `Pendiente`);
-
-        receiptDetailsDiv.innerHTML = `
-            <div class="receipt-header">
-                <img src="logo bahia a.png" alt="Logo Bahía A" class="logo-receipt">
-                <h4>Recibo de Pago</h4>
-            </div>
-            <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString()}</p>
-            <p><strong>Recibo No:</strong> #${id.substring(0, 8).toUpperCase()}</p>
-            <hr>
-            <h5>Detalles del Residente</h5>
-            <p><strong>Nombre:</strong> ${data.name}</p>
-            <p><strong>Departamento:</strong> ${data.depto}</p>
-            <p><strong>ID Residente:</strong> ${data.resId}</p>
-            <hr>
-            <h5>Detalles de la Factura</h5>
-            <p><strong>Concepto:</strong> ${data.concept}</p>
-            <p><strong>Monto Original:</strong> $${formatCurrency(data.amount)}</p>
-            ${multa > 0 ? `<p class="receipt-multa"><strong>Multa por Mora (5%):</strong> $${formatCurrency(multa)}</p>` : ''}
-            <p><strong>Fecha de Vencimiento:</strong> ${data.invoiceDate}</p>
-            <hr>
-            <p><strong>Estado:</strong> <span class="status-badge status-${data.status}">${statusText}</span></p>
-            <p class="receipt-amount"><strong>Total a Pagar:</strong> $${formatCurrency(totalAmount)}</p>
-        `;
-        
-        downloadReceiptBtn.dataset.invoiceId = id;
-        downloadReceiptBtn.dataset.multa = multa;
-
-        receiptModal.classList.remove('hidden');
+    } catch (err) {
+        console.error("Login Error:", err);
+        loginError.textContent = 'Error al iniciar sesión. Intenta de nuevo.';
+    } finally {
+        hideSpinner();
     }
-}
-
-closeModalBtn.addEventListener('click', () => {
-    receiptModal.classList.add('hidden');
 });
 
-downloadReceiptBtn.addEventListener('click', () => {
-    const id = downloadReceiptBtn.dataset.invoiceId;
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const content = document.getElementById('receipt-details');
-    
-    doc.setFont("Helvetica");
-    doc.setFontSize(10);
-    doc.text(`Recibo de Pago`, 105, 20, null, null, "center");
-    
-    const logoImg = new Image();
-    logoImg.src = 'logo bahia a.png';
-    logoImg.onload = function() {
-        doc.addImage(logoImg, 'PNG', 85, 25, 40, 40);
-        
-        html2canvas(content, { scale: 2 }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png');
-            const imgWidth = 200;
-            const imgHeight = canvas.height * imgWidth / canvas.width;
-            
-            doc.addPage();
-            doc.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
-            doc.save(`Recibo-${id}.pdf`);
+logoutBtn.addEventListener('click', () => {
+    auth.signOut();
+    showPage(loginPage);
+});
+
+residentLogoutBtn.addEventListener('click', () => {
+    auth.signOut();
+    showPage(loginPage);
+});
+
+// --- Admin Panel Functions ---
+
+showAddResidentBtn.addEventListener('click', () => toggleSection('add-resident-form'));
+cancelAddResidentBtn.addEventListener('click', () => toggleSection('add-resident-form'));
+showAddBillBtn.addEventListener('click', () => toggleSection('add-bill-form'));
+cancelAddBillBtn.addEventListener('click', () => toggleSection('add-bill-form'));
+showUploadBillsBtn.addEventListener('click', () => toggleSection('upload-bills-section'));
+
+// Resident CRUD operations
+residentForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const residentId = residentForm['resident-id'].value;
+    const name = residentForm['resident-name'].value;
+    const depto = residentForm['resident-depto'].value;
+    const username = residentForm['resident-username'].value;
+    const password = residentForm['resident-password'].value;
+
+    showSpinner();
+    try {
+        await db.collection('residents').doc(residentId).set({
+            name,
+            depto,
+            username,
+            password,
+            initialPassword: password,
+            credentialsChanged: false
         });
-    };
-});
-
-
-// --- Funciones para el cambio de contraseña del residente ---
-changePassBtn.addEventListener('click', () => {
-    changePassCard.classList.remove('hidden');
-});
-
-cancelPassChangeBtn.addEventListener('click', () => {
-    changePassCard.classList.add('hidden');
-    changePassForm.reset();
-    passErrorMessage.textContent = '';
-});
-
-changePassForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const oldPass = changePassForm['old-password'].value;
-    const newPass = changePassForm['new-password'].value;
-    const confirmPass = changePassForm['confirm-password'].value;
-
-    passErrorMessage.textContent = '';
-
-    if (newPass !== confirmPass) {
-        passErrorMessage.textContent = 'Las nuevas contraseñas no coinciden.';
-        return;
+        alert('Residente agregado exitosamente.');
+        residentForm.reset();
+        loadResidents();
+    } catch (err) {
+        console.error("Error adding resident: ", err);
+        alert('Error al agregar residente.');
+    } finally {
+        hideSpinner();
+        addResidentFormSection.classList.add('hidden');
     }
+});
 
-    const userDocRef = doc(db, "users", currentUser.uid);
-    const userDoc = await getDoc(userDocRef);
+// Load and display residents
+async function loadResidents() {
+    showSpinner();
+    residentsTableBody.innerHTML = '';
+    try {
+        const snapshot = await db.collection('residents').get();
+        snapshot.forEach(doc => {
+            const resident = doc.data();
+            const row = residentsTableBody.insertRow();
+            row.dataset.id = doc.id;
+            row.innerHTML = `
+                <td>${doc.id}</td>
+                <td>${resident.name}</td>
+                <td>${resident.depto}</td>
+                <td>${resident.username}</td>
+                <td>
+                    <button class="btn primary-btn view-bills-btn" data-id="${doc.id}">
+                        <i class="fas fa-eye"></i> Ver Facturas
+                    </button>
+                    <button class="btn logout-btn delete-resident-btn" data-id="${doc.id}">
+                        <i class="fas fa-trash-alt"></i> Eliminar
+                    </button>
+                </td>
+            `;
+        });
+    } catch (err) {
+        console.error("Error loading residents:", err);
+        alert('Error al cargar residentes.');
+    } finally {
+        hideSpinner();
+    }
+}
 
-    if (userDoc.exists()) {
-        const invoiceId = userDoc.data().invoiceId;
-        const invoiceDocRef = doc(db, "invoices", invoiceId);
-        const invoiceDoc = await getDoc(invoiceDocRef);
-        
-        if (invoiceDoc.exists() && oldPass === invoiceDoc.data().password) {
-            try {
-                await updatePassword(currentUser, newPass);
-                await updateDoc(invoiceDocRef, { password: newPass });
-                alert('Contraseña actualizada con éxito.');
-                changePassCard.classList.add('hidden');
-                changePassForm.reset();
-            } catch (error) {
-                console.error("Error al actualizar la contraseña:", error);
-                passErrorMessage.textContent = 'Ocurrió un error al cambiar la contraseña. Intente de nuevo.';
-            }
-        } else {
-            passErrorMessage.textContent = 'La contraseña actual es incorrecta.';
+// Handle resident actions (view bills, delete resident)
+residentsTableBody.addEventListener('click', (e) => {
+    const viewBtn = e.target.closest('.view-bills-btn');
+    const deleteBtn = e.target.closest('.delete-resident-btn');
+
+    if (viewBtn) {
+        const residentId = viewBtn.dataset.id;
+        currentResidentId = residentId; // Store the current resident's ID
+        showBillHistory(residentId);
+    } else if (deleteBtn) {
+        const residentId = deleteBtn.dataset.id;
+        if (confirm('¿Estás seguro de que quieres eliminar a este residente y todas sus facturas?')) {
+            deleteResident(residentId);
         }
     }
 });
 
+// Search functionality
+residentSearch.addEventListener('input', (e) => {
+    const filter = e.target.value.toLowerCase();
+    const rows = residentsTableBody.querySelectorAll('tr');
+    rows.forEach(row => {
+        const id = row.cells[0].textContent.toLowerCase();
+        const name = row.cells[1].textContent.toLowerCase();
+        const depto = row.cells[2].textContent.toLowerCase();
+        if (id.includes(filter) || name.includes(filter) || depto.includes(filter)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
 
-// --- Utilidades ---
-function formatCurrency(amount) {
-    if (isNaN(amount)) return amount;
-    return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0 }).format(amount);
-}
+// Bill CRUD operations
+billForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const residentId = billForm['bill-resident-id'].value;
+    const dueDate = billForm['bill-due-date'].value;
+    const amount = parseCurrency(billForm['bill-amount'].value);
+    const concept = billForm['bill-concept'].value;
+    const status = billForm['bill-status'].value;
+    const paymentDate = billForm['bill-payment-date'].value;
 
-function formatDate(excelDate) {
-    if (!excelDate) return null;
-    if (typeof excelDate === 'number') {
-        const date = new Date((excelDate - 25569) * 86400 * 1000);
-        return date.toISOString().split('T')[0];
+    showSpinner();
+    try {
+        await db.collection('bills').add({
+            residentId,
+            dueDate: firebase.firestore.Timestamp.fromDate(new Date(dueDate)),
+            amount,
+            concept,
+            status,
+            paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(new Date(paymentDate)) : null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert('Factura agregada exitosamente.');
+        billForm.reset();
+        loadResidents();
+    } catch (err) {
+        console.error("Error adding bill: ", err);
+        alert('Error al agregar factura.');
+    } finally {
+        hideSpinner();
+        addBillFormSection.classList.add('hidden');
     }
-    return excelDate;
+});
+
+// Handle Excel file upload
+excelFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    showSpinner();
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        const header = json[0];
+        const rows = json.slice(1);
+
+        const idIndex = header.indexOf('id_residente');
+        const dueDateIndex = header.indexOf('fecha_vencimiento');
+        const amountIndex = header.indexOf('monto');
+        const statusIndex = header.indexOf('estado');
+        const conceptIndex = header.indexOf('concepto');
+        const paymentDateIndex = header.indexOf('fecha_pago');
+
+        if (idIndex === -1 || dueDateIndex === -1 || amountIndex === -1) {
+            alert('El archivo Excel debe contener las columnas: id_residente, fecha_vencimiento, monto.');
+            hideSpinner();
+            return;
+        }
+
+        try {
+            const batch = db.batch();
+            rows.forEach(row => {
+                if (row[idIndex]) {
+                    const billRef = db.collection('bills').doc();
+                    const dueDate = new Date(row[dueDateIndex]);
+                    const paymentDate = row[paymentDateIndex] ? new Date(row[paymentDateIndex]) : null;
+                    batch.set(billRef, {
+                        residentId: row[idIndex].toString(),
+                        dueDate: firebase.firestore.Timestamp.fromDate(dueDate),
+                        amount: parseFloat(row[amountIndex]),
+                        concept: row[conceptIndex] || 'Sin concepto',
+                        status: row[statusIndex] || 'Pendiente',
+                        paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(paymentDate) : null,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            });
+            await batch.commit();
+            alert('Facturas cargadas exitosamente desde Excel.');
+            loadResidents();
+        } catch (error) {
+            console.error('Error al procesar el archivo Excel:', error);
+            alert('Error al cargar las facturas. Verifica el formato del archivo.');
+        } finally {
+            hideSpinner();
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+
+// Load bill history for a specific resident
+async function showBillHistory(residentId) {
+    showSpinner();
+    billHistoryTableBody.innerHTML = '';
+    try {
+        const residentDoc = await db.collection('residents').doc(residentId).get();
+        const resident = residentDoc.data();
+        modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
+        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
+        if (billsSnapshot.empty) {
+            billHistoryTableBody.innerHTML = `<tr><td colspan="6">No se encontraron facturas para este residente.</td></tr>`;
+        } else {
+            billsSnapshot.forEach(doc => {
+                const bill = doc.data();
+                const row = billHistoryTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${formatDate(bill.dueDate)}</td>
+                    <td>${formatCurrency(bill.amount)}</td>
+                    <td>${bill.concept}</td>
+                    <td class="status-${bill.status.toLowerCase()}">${bill.status}</td>
+                    <td>${formatDate(bill.paymentDate)}</td>
+                    <td>
+                        <button class="btn secondary-btn edit-bill-btn" data-id="${doc.id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn logout-btn delete-bill-btn" data-id="${doc.id}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+            });
+        }
+        billHistoryModal.classList.add('active');
+    } catch (err) {
+        console.error("Error loading bills:", err);
+        alert('Error al cargar el historial de facturas.');
+    } finally {
+        hideSpinner();
+    }
 }
+
+// Edit and Delete bills from modal
+billHistoryModal.addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('.edit-bill-btn');
+    const deleteBtn = e.target.closest('.delete-bill-btn');
+
+    if (editBtn) {
+        const billId = editBtn.dataset.id;
+        showEditBillModal(billId);
+    } else if (deleteBtn) {
+        const billId = deleteBtn.dataset.id;
+        if (confirm('¿Estás seguro de que quieres eliminar esta factura?')) {
+            showSpinner();
+            try {
+                await db.collection('bills').doc(billId).delete();
+                alert('Factura eliminada.');
+                if (currentResidentId) {
+                    showBillHistory(currentResidentId);
+                }
+            } catch (err) {
+                console.error("Error deleting bill:", err);
+                alert('Error al eliminar factura.');
+            } finally {
+                hideSpinner();
+            }
+        }
+    }
+});
+
+async function showEditBillModal(billId) {
+    showSpinner();
+    try {
+        const billDoc = await db.collection('bills').doc(billId).get();
+        const bill = billDoc.data();
+        editBillForm['edit-bill-id'].value = billId;
+        editBillForm['edit-bill-due-date'].value = bill.dueDate ? new Date(bill.dueDate.seconds * 1000).toISOString().slice(0, 10) : '';
+        editBillForm['edit-bill-amount'].value = bill.amount;
+        editBillForm['edit-bill-concept'].value = bill.concept;
+        editBillForm['edit-bill-status'].value = bill.status;
+        editBillForm['edit-bill-payment-date'].value = bill.status === 'Pagada' && bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000).toISOString().slice(0, 10) : '';
+        
+        billHistoryModal.classList.remove('active');
+        editBillModal.classList.add('active');
+    } catch (err) {
+        console.error("Error loading bill for edit:", err);
+        alert('Error al cargar los datos de la factura.');
+    } finally {
+        hideSpinner();
+    }
+}
+
+editBillForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const billId = editBillForm['edit-bill-id'].value;
+    const dueDate = editBillForm['edit-bill-due-date'].value;
+    const amount = parseFloat(editBillForm['edit-bill-amount'].value);
+    const concept = editBillForm['edit-bill-concept'].value;
+    const status = editBillForm['edit-bill-status'].value;
+    const paymentDate = editBillForm['edit-bill-payment-date'].value;
+
+    showSpinner();
+    try {
+        await db.collection('bills').doc(billId).update({
+            dueDate: firebase.firestore.Timestamp.fromDate(new Date(dueDate)),
+            amount,
+            concept,
+            status,
+            paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(new Date(paymentDate)) : null,
+        });
+        alert('Factura actualizada exitosamente.');
+        editBillModal.classList.remove('active');
+        if (currentResidentId) {
+            showBillHistory(currentResidentId);
+        }
+    } catch (err) {
+        console.error("Error updating bill:", err);
+        alert('Error al actualizar factura.');
+    } finally {
+        hideSpinner();
+    }
+});
+
+
+// --- Solución del Cierre de Modales: Delegación de Eventos ---
+// Un solo listener que maneja todos los cierres y cancelaciones.
+document.body.addEventListener('click', (e) => {
+    // Cierra cualquier modal si el clic fue en un botón con la clase .close-btn
+    const closeBtn = e.target.closest('.close-btn');
+    if (closeBtn) {
+        const modal = closeBtn.closest('.modal');
+        if (modal) {
+            modal.classList.remove('active');
+            // Si el modal de edición se cierra, muestra el de historial nuevamente
+            if (modal.id === 'edit-bill-modal' && currentResidentId) {
+                showBillHistory(currentResidentId);
+            }
+        }
+    }
+    
+    // Cierra cualquier sección de formulario si el clic fue en un botón de cancelación
+    const cancelBtn = e.target.closest('.cancel-btn');
+    if (cancelBtn) {
+        const formSection = cancelBtn.closest('.form-section');
+        if (formSection) {
+            formSection.classList.add('hidden');
+        }
+    }
+});
+
+// --- Resident Panel Functions ---
+
+async function loadResidentBills(residentId) {
+    showSpinner();
+    residentBillsTableBody.innerHTML = '';
+    try {
+        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
+        if (billsSnapshot.empty) {
+            residentBillsTableBody.innerHTML = `<tr><td colspan="5">No se encontraron facturas pendientes.</td></tr>`;
+        } else {
+            billsSnapshot.forEach(doc => {
+                const bill = doc.data();
+                const today = new Date();
+                // Normaliza la fecha de vencimiento a solo día, mes y año
+                const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
+                if (dueDate) {
+                    dueDate.setHours(0, 0, 0, 0);
+                }
+                const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
+                
+                const row = residentBillsTableBody.insertRow();
+                row.dataset.id = doc.id;
+                row.innerHTML = `
+                    <td>${bill.concept}</td>
+                    <td>${formatCurrency(bill.amount)}</td>
+                    <td>${formatDate(bill.dueDate)}</td>
+                    <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
+                    <td>
+                        <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
+                            <i class="fas fa-file-download"></i> Descargar Recibo
+                        </button>
+                    </td>
+                `;
+            });
+        }
+    } catch (err) {
+        console.error("Error loading resident bills:", err);
+        alert('Error al cargar sus facturas.');
+    } finally {
+        hideSpinner();
+    }
+}
+
+// Download receipt as PDF
+residentBillsTableBody.addEventListener('click', async (e) => {
+    const downloadBtn = e.target.closest('.download-receipt-btn');
+    if (downloadBtn) {
+        const billId = downloadBtn.dataset.id;
+        showSpinner();
+        try {
+            const billDoc = await db.collection('bills').doc(billId).get();
+            const bill = billDoc.data();
+            const residentDoc = await db.collection('residents').doc(bill.residentId).get();
+            const resident = residentDoc.data();
+
+            const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
+            if (dueDate) {
+                dueDate.setHours(0, 0, 0, 0);
+            }
+
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
+                           (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+            
+            const multa = isLate ? bill.amount * 0.10 : 0; // 10% late fee
+            const finalAmount = bill.amount + multa;
+            
+            const receiptContent = `
+                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+                    <div style="text-align: center; border-bottom: 2px solid #4A90E2; padding-bottom: 20px; margin-bottom: 20px;">
+                        <h1 style="color: #4A90E2; font-size: 24px; margin: 0;"><i class="fas fa-building" style="margin-right: 10px;"></i>RECIBO DE PAGO</h1>
+                        <p style="font-size: 14px; color: #777;">Gestión de Edificio</p>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                        <div>
+                            <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString('es-CO')}</p>
+                            <p><strong>Recibo No.:</strong> ${billDoc.id.substring(0, 8)}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <p><strong>Residente:</strong> ${resident.name}</p>
+                            <p><strong>Departamento:</strong> ${resident.depto}</p>
+                        </div>
+                    </div>
+
+                    <h2 style="font-size: 18px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">Detalles de la Factura</h2>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <thead>
+                            <tr style="background-color: #f2f2f2;">
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Concepto</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Monto</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Fecha Venc.</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${bill.concept}</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${formatCurrency(bill.amount)}</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${formatDate(bill.dueDate)}</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${bill.status}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    ${isLate ? `
+                        <p style="color: #F39C12; font-weight: 600;">¡Atención! La fecha de vencimiento ha pasado. Se ha aplicado una multa.</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 15px;">
+                            <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
+                                <span>Monto de la Factura:</span>
+                                <span>${formatCurrency(bill.amount)}</span>
+                            </li>
+                            <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
+                                <span>Multa (10%):</span>
+                                <span>${formatCurrency(multa)}</span>
+                            </li>
+                        </ul>
+                    ` : ''}
+
+                    <div style="background-color: #eaf3ff; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: right;">
+                        <h3 style="margin: 0; font-size: 20px; color: #4A90E2;">TOTAL A PAGAR</h3>
+                        <p style="font-size: 28px; font-weight: 700; color: #4A90E2; margin: 5px 0;">${formatCurrency(finalAmount)}</p>
+                        <p style="font-size: 14px; color: #777; margin-top: 10px;">
+                            ${bill.status === 'Pagada' ? `<strong>Fecha de Pago:</strong> ${formatDate(bill.paymentDate)}` : ''}
+                        </p>
+                    </div>
+
+                    <div style="margin-top: 30px; text-align: center; border-top: 1px solid #ddd; padding-top: 20px;">
+                        <p style="font-size: 12px; color: #aaa;">Gracias por tu pago. Para cualquier consulta, contacta con la administración.</p>
+                        <p style="font-size: 12px; color: #aaa;">Generado por el sistema de gestión del edificio el ${new Date().toLocaleDateString('es-CO')}</p>
+                    </div>
+                </div>
+            `;
+
+            const options = {
+                margin: 10,
+                filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().from(receiptContent).set(options).save();
+        } catch (err) {
+            console.error("Error generating PDF:", err);
+            alert('Error al generar el recibo.');
+        } finally {
+            hideSpinner();
+        }
+    }
+});
+
+// Change resident credentials
+showChangePasswordBtn.addEventListener('click', () => {
+    credentialsError.textContent = '';
+    credentialsSuccess.textContent = '';
+    toggleSection('change-credentials-form');
+});
+
+changeCredentialsFormInner.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const oldUsername = changeCredentialsFormInner['old-username'].value;
+    const oldPassword = changeCredentialsFormInner['old-password'].value;
+    const newUsername = changeCredentialsFormInner['new-username'].value;
+    const newPassword = changeCredentialsFormInner['new-password'].value;
+    
+    credentialsError.textContent = '';
+    credentialsSuccess.textContent = '';
+    showSpinner();
+
+    try {
+        const residentDoc = await db.collection('residents').doc(currentResidentId).get();
+        const resident = residentDoc.data();
+
+        if (resident.username === oldUsername && resident.password === oldPassword) {
+            await db.collection('residents').doc(currentResidentId).update({
+                username: newUsername,
+                password: newPassword,
+                credentialsChanged: true
+            });
+            credentialsSuccess.textContent = 'Credenciales actualizadas exitosamente.';
+            changeCredentialsFormInner.reset();
+            const updatedResidentDoc = await db.collection('residents').doc(currentResidentId).get();
+            const updatedResident = updatedResidentDoc.data();
+            residentWelcome.textContent = `Bienvenido, ${updatedResident.name}`;
+        } else {
+            credentialsError.textContent = 'Usuario o contraseña actual incorrectos.';
+        }
+    } catch (err) {
+        console.error("Error changing credentials:", err);
+        credentialsError.textContent = 'Error al cambiar credenciales. Intenta de nuevo.';
+    } finally {
+        hideSpinner();
+    }
+});
+
+// Ocultar el spinner una vez que el DOM esté completamente cargado.
+document.addEventListener('DOMContentLoaded', () => {
+    hideSpinner();
+});
