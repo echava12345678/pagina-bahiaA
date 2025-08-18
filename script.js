@@ -3,25 +3,25 @@
 ==========================================================*/
 
 :root {
-    --primary-color: #0d1a26; /* Azul muy oscuro, casi negro */
-    --primary-hover: #1f3044;
-    --secondary-color: #00b4d8; /* Azul claro brillante para acentos */
-    --secondary-hover: #0077b6;
-    --background-color: #f0f2f5; /* Gris claro para el fondo */
-    --card-background: #ffffff; /* Blanco para tarjetas y paneles */
-    --text-color: #34495e;
-    --muted-color: #95a5a6;
-    --border-color: #e0e6ed;
-    --error-color: #e74c3c;
-    --success-color: #2ecc71;
-    --multa-color: #f39c12;
-    --paid-color: #2ecc71;
-    --pending-color: #e74c3c;
-    --font-family: 'Roboto', sans-serif;
-    --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    --primary-color: #212529; /* Casi negro para el texto principal y fondo */
+    --primary-hover: #343a40;
+    --secondary-color: #4dabf7; /* Azul claro para acentos y elementos interactivos */
+    --secondary-hover: #339af0;
+    --background-color: #f8f9fa; /* Fondo muy claro */
+    --card-background: #ffffff; /* Fondo blanco para tarjetas y paneles */
+    --text-color: #495057;
+    --muted-color: #adb5bd;
+    --border-color: #dee2e6;
+    --error-color: #e03131;
+    --success-color: #2b8a3e;
+    --multa-color: #e67700;
+    --paid-color: #2b8a3e;
+    --pending-color: #e03131;
+    --font-family: 'Inter', sans-serif;
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 * {
     box-sizing: border-box;
@@ -44,7 +44,7 @@ body {
 .page {
     display: none;
     min-height: 100vh;
-    padding-top: 80px; /* Para dejar espacio para el header fijo */
+    padding: 2rem;
     animation: fadeIn 0.8s ease-in-out;
 }
 
@@ -63,31 +63,23 @@ body {
 }
 
 header {
-    background: var(--primary-color);
-    color: white;
-    padding: 1rem 3rem;
+    background: var(--card-background);
+    padding: 1.5rem 2rem;
     box-shadow: var(--box-shadow);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1000;
 }
 
 .logo-text {
     font-weight: 700;
     font-size: 1.5rem;
-    color: var(--secondary-color);
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    color: var(--primary-color);
 }
 
 .logo-image {
-    height: 40px;
+    height: 35px;
+    margin-right: 10px;
 }
 
 .user-info {
@@ -103,81 +95,77 @@ header {
 
 /* Botones */
 .btn {
-    padding: 12px 25px;
-    border-radius: 5px;
+    padding: 10px 20px;
+    border-radius: 6px;
     border: none;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    transition: background-color 0.2s ease, transform 0.2s ease;
     font-size: 0.9rem;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     text-decoration: none;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
 }
 
 .primary-btn {
-    background-color: var(--secondary-color);
+    background-color: var(--primary-color);
     color: var(--card-background);
 }
 
 .primary-btn:hover {
-    background-color: var(--secondary-hover);
+    background-color: var(--primary-hover);
 }
 
 .secondary-btn {
-    background-color: var(--text-color);
+    background-color: var(--secondary-color);
     color: var(--card-background);
 }
 
 .secondary-btn:hover {
-    background-color: var(--muted-color);
+    background-color: var(--secondary-hover);
 }
 
 .logout-btn {
     background-color: transparent;
-    border: 2px solid var(--secondary-color);
-    color: var(--secondary-color);
+    color: var(--error-color);
+    border: 1px solid var(--error-color);
 }
 
 .logout-btn:hover {
-    background-color: var(--secondary-color);
+    background-color: var(--error-color);
     color: var(--card-background);
 }
 
 /* Contenedores y Títulos de Sección */
 .panel-container {
-    max-width: 1200px;
-    margin: 50px auto;
+    max-width: 1100px;
+    margin: 40px auto;
     padding: 0 20px;
-    display: grid;
-    grid-gap: 30px;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 .admin-section,
 .resident-section {
     background: var(--card-background);
-    padding: 30px;
+    padding: 2rem;
     border-radius: 12px;
     box-shadow: var(--box-shadow);
+    margin-bottom: 30px;
 }
 
 .section-title {
-    font-size: 1.8rem;
+    font-size: 1.7rem;
     font-weight: 700;
     color: var(--primary-color);
     margin-bottom: 25px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 15px;
 }
 
 .action-buttons {
@@ -193,8 +181,8 @@ header {
 
 .form-section {
     background-color: var(--background-color);
-    padding: 25px;
-    border-radius: 10px;
+    padding: 20px;
+    border-radius: 8px;
     margin-top: 20px;
 }
 
@@ -202,19 +190,17 @@ header {
     margin-bottom: 15px;
     color: var(--primary-color);
     font-weight: 600;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
 }
 
 .form-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
     margin-bottom: 15px;
-    flex-wrap: wrap;
 }
 
 .input-group {
-    flex: 1;
-    min-width: 250px;
     display: flex;
     flex-direction: column;
 }
@@ -232,12 +218,11 @@ input[type="date"],
 input[type="number"],
 select {
     width: 100%;
-    padding: 12px;
-    border-radius: 5px;
+    padding: 10px;
+    border-radius: 6px;
     border: 1px solid var(--border-color);
     font-size: 1rem;
-    transition: border-color 0.3s;
-    background-color: var(--card-background);
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 input[type="text"]:focus,
@@ -247,7 +232,7 @@ input[type="number"]:focus,
 select:focus {
     outline: none;
     border-color: var(--secondary-color);
-    box-shadow: 0 0 0 2px rgba(0, 180, 216, 0.2);
+    box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.2);
 }
 
 .form-actions {
@@ -258,14 +243,6 @@ select:focus {
 
 .hidden {
     display: none !important;
-}
-
-.instruction-text {
-    margin-top: 15px;
-    font-size: 0.9rem;
-    color: var(--muted-color);
-    border-left: 3px solid var(--secondary-color);
-    padding-left: 15px;
 }
 
 /*==========================================================
@@ -287,7 +264,7 @@ select:focus {
 
 .data-table th,
 .data-table td {
-    padding: 18px;
+    padding: 15px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
 }
@@ -297,23 +274,24 @@ select:focus {
     color: var(--card-background);
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.8rem;
-    letter-spacing: 1px;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
 }
 
 .data-table tbody tr:hover {
-    background-color: #f8f9fa;
+    background-color: #f1f3f5;
     transition: background-color 0.3s ease;
 }
 
 /* Estilos para el estado de las facturas */
 .status-badge {
     padding: 6px 12px;
-    border-radius: 20px;
+    border-radius: 15px;
     font-weight: 600;
     font-size: 0.8rem;
     color: var(--card-background);
     display: inline-block;
+    text-align: center;
 }
 
 .status-badge.paid {
@@ -338,42 +316,43 @@ select:focus {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: none;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1500;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(4px);
     opacity: 0;
-    transition: opacity 0.4s ease;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .modal-backdrop.active {
-    display: flex;
     opacity: 1;
+    visibility: visible;
 }
 
 .modal {
     background-color: var(--card-background);
     padding: 30px;
-    border-radius: 15px;
-    box-shadow: var(--box-shadow);
+    border-radius: 12px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
     width: 90%;
-    max-width: 700px;
+    max-width: 600px;
     position: relative;
-    transform: translateY(-20px);
-    transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    transform: scale(0.95) translateY(20px);
+    transition: transform 0.3s ease;
 }
 
 .modal-backdrop.active .modal {
-    transform: translateY(0);
+    transform: scale(1) translateY(0);
 }
 
 .modal-close-btn {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
     font-weight: bold;
     position: absolute;
-    top: 10px;
+    top: 15px;
     right: 20px;
     cursor: pointer;
     color: var(--muted-color);
@@ -387,10 +366,10 @@ select:focus {
 .modal h3 {
     margin-top: 0;
     color: var(--primary-color);
-    font-weight: 700;
-    font-size: 1.5rem;
+    font-weight: 600;
+    font-size: 1.4rem;
     margin-bottom: 20px;
-    border-bottom: 2px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 10px;
 }
 
@@ -403,26 +382,25 @@ select:focus {
   7. MENSAJES DE ERROR Y ÉXITO
 ==========================================================*/
 
-.error-message {
-    color: var(--error-color);
-    background-color: #fce4e4;
-    padding: 10px 15px;
-    border-radius: 5px;
-    border: 1px solid var(--error-color);
+.error-message, .success-message {
+    padding: 12px 15px;
+    border-radius: 6px;
     margin-top: 15px;
     font-size: 0.9rem;
     display: none;
+    font-weight: 500;
+}
+
+.error-message {
+    color: var(--error-color);
+    background-color: #ffe3e3;
+    border: 1px solid var(--error-color);
 }
 
 .success-message {
     color: var(--success-color);
-    background-color: #e8f5e9;
-    padding: 10px 15px;
-    border-radius: 5px;
+    background-color: #d6f2df;
     border: 1px solid var(--success-color);
-    margin-top: 15px;
-    font-size: 0.9rem;
-    display: none;
 }
 
 /*==========================================================
@@ -437,35 +415,26 @@ select:focus {
     min-height: 100vh;
     text-align: center;
     padding: 20px;
-    background: url('https://picsum.photos/1920/1080?grayscale') no-repeat center center/cover;
 }
 
 .login-container .logo-text {
-    font-size: 2.5rem;
+    font-size: 2rem;
     margin-bottom: 20px;
-    color: var(--card-background);
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .login-container h2 {
-    font-size: 1.8rem;
-    color: var(--card-background);
-    margin-bottom: 30px;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+    font-size: 1.6rem;
+    color: var(--primary-color);
+    margin-bottom: 25px;
 }
 
 .login-container form {
-    background-color: rgba(255, 255, 255, 0.9);
-    padding: 40px;
+    background-color: var(--card-background);
+    padding: 35px;
     border-radius: 12px;
     box-shadow: var(--box-shadow);
     width: 100%;
-    max-width: 450px;
-    backdrop-filter: blur(5px);
-}
-
-.login-container .input-group {
-    margin-bottom: 25px;
+    max-width: 400px;
 }
 
 /*==========================================================
@@ -487,11 +456,11 @@ select:focus {
 }
 
 .spinner {
-    border: 6px solid #f3f3f3;
-    border-top: 6px solid var(--secondary-color);
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--secondary-color);
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     animation: spin 1s linear infinite;
 }
 
@@ -510,6 +479,10 @@ select:focus {
 ==========================================================*/
 
 @media (max-width: 768px) {
+    .page {
+        padding: 1rem;
+    }
+
     header {
         flex-direction: column;
         align-items: flex-start;
@@ -518,12 +491,11 @@ select:focus {
 
     .user-info {
         width: 100%;
-        justify-content: space-between;
+        justify-content: flex-end;
     }
 
-    .panel-container {
-        grid-template-columns: 1fr;
-        padding: 0 15px;
+    .section-title {
+        font-size: 1.5rem;
     }
 
     .action-buttons {
@@ -537,7 +509,6 @@ select:focus {
     }
 
     .form-row {
-        flex-direction: column;
-        gap: 15px;
+        grid-template-columns: 1fr;
     }
 }
