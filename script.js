@@ -113,9 +113,10 @@ loginForm.addEventListener('submit', async (e) => {
     errorMessage.textContent = '';
     
     // Intenta iniciar sesión como administrador
-    if (username === 'admin@bahia.com' && password === 'admin123') {
+    if (username === 'admin') {
+        const adminEmail = 'admin@bahia.com';
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, username, password);
+            const userCredential = await signInWithEmailAndPassword(auth, adminEmail, password);
             const userDocRef = doc(db, "users", userCredential.user.uid);
             await setDoc(userDocRef, { role: 'admin' }, { merge: true });
         } catch (error) {
