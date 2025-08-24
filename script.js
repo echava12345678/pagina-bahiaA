@@ -1,7 +1,7 @@
 // Hola!! si estas chismoseando el codigo :)
 // Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyBQQbZeHBV9thJ0iy3c3c30k3ERCYvRoDQMM",
+    apiKey: "AIzaSyBQQbZeHB9thJ0iy3c3c30k3ERCYvRoDQMM",
     authDomain: "bahiaa.firebaseapp.com",
     projectId: "bahiaa",
     storageBucket: "bahiaa.firebasestorage.app",
@@ -288,6 +288,7 @@ billForm.addEventListener('submit', async (e) => {
     const concept = billForm['bill-concept'].value;
     const status = billForm['bill-status'].value;
     const paymentDate = billForm['bill-payment-date'].value;
+    const paidAmount = parseCurrency(billForm['bill-paid-amount'].value) || 0; // Nuevo campo
 
     showSpinner();
     try {
@@ -301,6 +302,7 @@ billForm.addEventListener('submit', async (e) => {
             concept,
             status,
             paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
+            paidAmount: paidAmount, // Nuevo campo en Firebase
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         alert('Factura agregada exitosamente.');
@@ -338,6 +340,7 @@ excelFile.addEventListener('change', async (e) => {
         const statusIndex = header.indexOf('estado');
         const conceptIndex = header.indexOf('concepto');
         const paymentDateIndex = header.indexOf('fecha_pago');
+        const paidAmountIndex = header.indexOf('monto_pagado'); // Nuevo índice
 
         if (idIndex === -1 || dueDateIndex === -1 || amountIndex === -1) {
             alert('El archivo Excel debe contener las columnas: id_residente, fecha_vencimiento, monto.');
@@ -352,7 +355,8 @@ excelFile.addEventListener('change', async (e) => {
                     const billRef = db.collection('bills').doc();
                     const dueDate = new Date((row[dueDateIndex] - (25567 + 1)) * 86400 * 1000); // Excel date to JS Date
                     const paymentDate = row[paymentDateIndex] ? new Date((row[paymentDateIndex] - (25567 + 1)) * 86400 * 1000) : null;
-                    
+                    const paidAmount = row[paidAmountIndex] || 0; // Nuevo campo
+
                     batch.set(billRef, {
                         residentId: row[idIndex].toString(),
                         dueDate: firebase.firestore.Timestamp.fromDate(dueDate),
@@ -360,6 +364,7 @@ excelFile.addEventListener('change', async (e) => {
                         concept: row[conceptIndex] || 'Sin concepto',
                         status: row[statusIndex] || 'Pendiente',
                         paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(paymentDate) : null,
+                        paidAmount: paidAmount, // Nuevo campo
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 }
@@ -389,7 +394,7 @@ async function showBillHistory(residentId) {
         modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
         if (billsSnapshot.empty) {
-            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`;
+            billHistoryTableBody.innerHTML = `<tr><td colspan="8">No se encontraron facturas para este residente.</td></tr>`;
         } else {
             billsSnapshot.forEach(doc => {
                 const bill = doc.data();
@@ -397,6 +402,7 @@ async function showBillHistory(residentId) {
                 row.innerHTML = `
                     <td>${formatDate(bill.dueDate)}</td>
                     <td>${formatCurrency(bill.amount)}</td>
+                    <td>${formatCurrency(bill.paidAmount || 0)}</td>
                     <td>${bill.concept}</td>
                     <td class="status-${bill.status.toLowerCase().replace(' ', '-')}">${bill.status}</td>
                     <td>${formatDate(bill.paymentDate)}</td>
@@ -461,16 +467,34 @@ billHistoryModal.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
             
             let previousBalance = 0;
+            let accumulatedCredit = 0;
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
+                .orderBy('createdAt', 'asc') // Ordenar por fecha de creación para un historial correcto
                 .get();
 
-            allBillsSnapshot.forEach(doc => {
+            allBillsSnapshot.docs.forEach(doc => {
                 const prevBill = doc.data();
-                if (prevBill.status === 'Pendiente' && prevBill.dueDate.seconds < bill.dueDate.seconds) {
-                    previousBalance += prevBill.amount;
+                if (prevBill.createdAt.seconds < bill.createdAt.seconds) {
+                    if (prevBill.status === 'Pendiente') {
+                        previousBalance += prevBill.amount;
+                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
+                        const credit = prevBill.paidAmount - prevBill.amount;
+                        if (credit > 0) {
+                            accumulatedCredit += credit;
+                        }
+                    }
                 }
             });
+            
+            // Si el saldo a favor es mayor que el saldo anterior, descontarlo
+            if (accumulatedCredit >= previousBalance) {
+                accumulatedCredit -= previousBalance;
+                previousBalance = 0;
+            } else {
+                previousBalance -= accumulatedCredit;
+                accumulatedCredit = 0;
+            }
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -482,9 +506,11 @@ billHistoryModal.addEventListener('click', async (e) => {
             
             const currentAmountToPay = bill.status === 'Pendiente' ? bill.amount : 0;
             const multa = isLate ? bill.amount * 0.10 : 0;
-            const finalAmount = currentAmountToPay + previousBalance + multa;
-            const paidThisMonth = bill.status === 'Pagada' ? bill.amount : 0;
+            const paidThisMonth = bill.status === 'Pagada' ? bill.paidAmount : 0;
 
+            const finalAmount = currentAmountToPay + previousBalance + multa;
+            const currentCredit = (bill.status === 'Pagada' && bill.paidAmount) ? (bill.paidAmount - bill.amount > 0 ? bill.paidAmount - bill.amount : 0) : 0;
+            
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -540,15 +566,15 @@ billHistoryModal.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(accumulatedCredit)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PAGADO MES ANT</strong>
+                                <strong>PAGADO ESTE MES</strong>
                                 <br>${formatCurrency(paidThisMonth)}
                             </td>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
@@ -602,6 +628,9 @@ async function showEditBillModal(billId) {
         editBillForm['edit-bill-concept'].value = bill.concept;
         editBillForm['edit-bill-status'].value = bill.status;
 
+        // Nuevo campo en el modal
+        editBillForm['edit-bill-paid-amount'].value = bill.paidAmount || '';
+
         // Corrección de la fecha de pago:
         const paymentDate = bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000) : null;
         if (paymentDate) {
@@ -629,6 +658,7 @@ editBillForm.addEventListener('submit', async (e) => {
     const concept = editBillForm['edit-bill-concept'].value;
     const status = editBillForm['edit-bill-status'].value;
     const paymentDate = editBillForm['edit-bill-payment-date'].value;
+    const paidAmount = parseFloat(editBillForm['edit-bill-paid-amount'].value) || 0; // Nuevo campo
 
     showSpinner();
     try {
@@ -641,6 +671,7 @@ editBillForm.addEventListener('submit', async (e) => {
             concept,
             status,
             paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
+            paidAmount: paidAmount // Nuevo campo
         });
         alert('Factura actualizada exitosamente.');
         editBillModal.classList.remove('active');
@@ -726,16 +757,34 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
+            let accumulatedCredit = 0;
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
+                .orderBy('createdAt', 'asc')
                 .get();
 
-            allBillsSnapshot.forEach(doc => {
+            allBillsSnapshot.docs.forEach(doc => {
                 const prevBill = doc.data();
-                if (prevBill.status === 'Pendiente' && prevBill.dueDate.seconds < bill.dueDate.seconds) {
-                    previousBalance += prevBill.amount;
+                if (prevBill.createdAt.seconds < bill.createdAt.seconds) {
+                    if (prevBill.status === 'Pendiente') {
+                        previousBalance += prevBill.amount;
+                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
+                        const credit = prevBill.paidAmount - prevBill.amount;
+                        if (credit > 0) {
+                            accumulatedCredit += credit;
+                        }
+                    }
                 }
             });
+            
+            // Si el saldo a favor es mayor que el saldo anterior, descontarlo
+            if (accumulatedCredit >= previousBalance) {
+                accumulatedCredit -= previousBalance;
+                previousBalance = 0;
+            } else {
+                previousBalance -= accumulatedCredit;
+                accumulatedCredit = 0;
+            }
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -747,8 +796,10 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             
             const currentAmountToPay = bill.status === 'Pendiente' ? bill.amount : 0;
             const multa = isLate ? bill.amount * 0.10 : 0;
+            const paidThisMonth = bill.status === 'Pagada' ? bill.paidAmount : 0;
+
             const finalAmount = currentAmountToPay + previousBalance + multa;
-            const paidThisMonth = bill.status === 'Pagada' ? bill.amount : 0;
+            const currentCredit = (bill.status === 'Pagada' && bill.paidAmount) ? (bill.paidAmount - bill.amount > 0 ? bill.paidAmount - bill.amount : 0) : 0;
             
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -805,15 +856,15 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(accumulatedCredit)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PAGADO MES ANT</strong>
+                                <strong>PAGADO ESTE MES</strong>
                                 <br>${formatCurrency(paidThisMonth)}
                             </td>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
