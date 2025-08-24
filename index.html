@@ -128,10 +128,6 @@
                                     <label for="bill-amount">Monto ($)</label>
                                     <input type="number" id="bill-amount" step="0.01" required>
                                 </div>
-                                    <div class="input-group">
-    <label for="edit-bill-paid-amount">Cuánto pagó</label>
-    <input type="number" id="edit-bill-paid-amount" step="any" min="0" placeholder="Opcional">
-</div>
         
                             </div>
                             <div class="form-row">
@@ -152,6 +148,10 @@
                                     <input type="date" id="bill-payment-date">
                                 </div>
                             </div>
+                            <div class="input-group">
+            <label for="bill-paid-amount">Cuánto pagó</label>
+            <input type="number" id="bill-paid-amount" step="any" min="0" placeholder="Opcional">
+        </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn primary-btn">Agregar Factura</button>
                             </div>
@@ -219,6 +219,10 @@
                                     <input type="number" id="edit-bill-amount" step="0.01" required>
                                 </div>
                             </div>
+                            <div class="input-group">
+                <label for="edit-bill-paid-amount">Cuánto pagó</label>
+                <input type="number" id="edit-bill-paid-amount" step="any" min="0" placeholder="Opcional">
+            </div>
                             <div class="form-row">
                                 <div class="input-group">
                                     <label for="edit-bill-concept">Concepto</label>
