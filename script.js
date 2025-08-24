@@ -161,7 +161,7 @@ residentForm.addEventListener('submit', async (e) => {
     const residentId = residentForm['resident-id'].value;
     const name = residentForm['resident-name'].value;
     const depto = residentForm['resident-depto'].value;
-    const email = residentForm['resident-email'].value; // CAMBIO: Variable para capturar el correo electrónico del residente
+    const email = residentForm['resident-email'].value;
     const username = residentForm['resident-username'].value;
     const password = residentForm['resident-password'].value;
 
@@ -170,7 +170,7 @@ residentForm.addEventListener('submit', async (e) => {
         await db.collection('residents').doc(residentId).set({
             name,
             depto,
-            email, // CAMBIO: Se guarda el campo 'email' en la base de datos
+            email,
             username,
             password,
             initialPassword: password,
@@ -184,7 +184,7 @@ residentForm.addEventListener('submit', async (e) => {
         alert('Error al agregar residente.');
     } finally {
         hideSpinner();
-        toggleSection(null); // Ocultar todos los formularios
+        toggleSection(null);
     }
 });
 
@@ -228,7 +228,7 @@ residentsTableBody.addEventListener('click', (e) => {
 
     if (viewBtn) {
         const residentId = viewBtn.dataset.id;
-        currentResidentId = residentId; // Store the current resident's ID
+        currentResidentId = residentId;
         showBillHistory(residentId);
     } else if (deleteBtn) {
         const residentId = deleteBtn.dataset.id;
@@ -254,7 +254,7 @@ async function deleteResident(residentId) {
         await db.collection('residents').doc(residentId).delete();
 
         alert('Residente y sus facturas eliminados exitosamente.');
-        loadResidents(); // Recargar la tabla
+        loadResidents();
     } catch (err) {
         console.error("Error deleting resident:", err);
         alert('Error al eliminar residente.');
@@ -303,10 +303,8 @@ billForm.addEventListener('submit', async (e) => {
         alert('Factura agregada exitosamente.');
         billForm.reset();
         loadResidents();
-        
-        // --- COMENTARIO: Llamada a la nueva función que se comunica con el servidor de Node.js ---
+
         await enviarNotificacionFactura(residentId, concept, dueDate, amount);
-        // -------------------------------------------------------------------------------------------
 
     } catch (err) {
         console.error("Error adding bill: ", err);
@@ -352,9 +350,9 @@ excelFile.addEventListener('change', async (e) => {
             for (const row of rows) {
                 if (row[idIndex]) {
                     const billRef = db.collection('bills').doc();
-                    const dueDate = new Date((row[dueDateIndex] - (25567 + 1)) * 86400 * 1000); // Excel date to JS Date
+                    const dueDate = new Date((row[dueDateIndex] - (25567 + 1)) * 86400 * 1000);
                     const paymentDate = row[paymentDateIndex] ? new Date((row[paymentDateIndex] - (25567 + 1)) * 86400 * 1000) : null;
-                    
+
                     batch.set(billRef, {
                         residentId: row[idIndex].toString(),
                         dueDate: firebase.firestore.Timestamp.fromDate(dueDate),
@@ -391,7 +389,7 @@ async function showBillHistory(residentId) {
         modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
         if (billsSnapshot.empty) {
-            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`; // Corregir colspan
+            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`;
         } else {
             billsSnapshot.forEach(doc => {
                 const bill = doc.data();
@@ -431,7 +429,7 @@ async function showBillHistory(residentId) {
 billHistoryModal.addEventListener('click', async (e) => {
     const editBtn = e.target.closest('.edit-bill-btn');
     const deleteBtn = e.target.closest('.delete-bill-btn');
-    const downloadBtn = e.target.closest('.download-receipt-btn'); // Nuevo
+    const downloadBtn = e.target.closest('.download-receipt-btn');
 
     if (editBtn) {
         const billId = editBtn.dataset.id;
@@ -453,7 +451,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                 hideSpinner();
             }
         }
-    } else if (downloadBtn) { // Nueva condición para el botón de descarga
+    } else if (downloadBtn) {
         const billId = downloadBtn.dataset.id;
         showSpinner();
         try {
@@ -461,18 +459,22 @@ billHistoryModal.addEventListener('click', async (e) => {
             const bill = billDoc.data();
             const residentDoc = await db.collection('residents').doc(bill.residentId).get();
             const resident = residentDoc.data();
-            const previousBillsSnapshot = await db.collection('bills')
-                .where('residentId', '==', resident.id)
-                .where('status', '==', 'Pendiente')
-                .where('dueDate', '<', bill.dueDate)
-                .get();
 
+            // CAMBIO: Se añadió una verificación para asegurar que la fecha de vencimiento existe.
             let previousBalance = 0;
-            previousBillsSnapshot.forEach(doc => {
-                const prevBill = doc.data();
-                previousBalance += prevBill.amount;
-            });
+            if (bill.dueDate) {
+                const previousBillsSnapshot = await db.collection('bills')
+                    .where('residentId', '==', resident.id)
+                    .where('status', '==', 'Pendiente')
+                    .where('dueDate', '<', bill.dueDate)
+                    .get();
 
+                previousBillsSnapshot.forEach(doc => {
+                    const prevBill = doc.data();
+                    previousBalance += prevBill.amount;
+                });
+            }
+            
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             let multa = 0;
             if (dueDate && new Date() > dueDate && bill.status === 'Pendiente') {
@@ -480,79 +482,80 @@ billHistoryModal.addEventListener('click', async (e) => {
             }
 
             const totalAmount = bill.amount + previousBalance + multa;
+
             const receiptContent = `
-    <div style="width: 100%; max-width: 600px; margin: auto; padding: 20px; font-family: 'Poppins', sans-serif; font-size: 14px; border: 1px solid #000;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
-            <div style="text-align: center; border: 1px solid #000; padding: 10px; width: 65%;">
-                <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
-                Nit 901048187-4<br>
-                Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
-            </div>
-            <div style="width: 30%;">
-                <img src="logo bahia a.png" alt="Logo Bahia A" style="width: 100%;">
-            </div>
-        </div>
+                <div style="width: 100%; max-width: 600px; margin: auto; padding: 20px; font-family: 'Poppins', sans-serif; font-size: 14px; border: 1px solid #000;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
+                        <div style="text-align: center; border: 1px solid #000; padding: 10px; width: 65%;">
+                            <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
+                            Nit 901048187-4<br>
+                            Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
+                        </div>
+                        <div style="width: 30%;">
+                            <img src="logo bahia a.png" alt="Logo Bahia A" style="width: 100%;">
+                        </div>
+                    </div>
 
-        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-            <div style="border: 1px solid #000; padding: 10px; text-align: center; width: 48%;">
-                <strong>CUENTA DE COBRO No: 015</strong><br>
-                <strong>REFERENCIA DE PAGO: ${resident.depto}</strong>
-            </div>
-            <div style="border: 1px solid #000; padding: 10px; text-align: center; width: 48%;">
-                <strong>PERIODO DE FACTURACIÓN:</strong><br>
-                AGOSTO DE 2025<br>
-                FECHA VENCIMIENTO: ${formatDate(bill.dueDate)}
-            </div>
-        </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                        <div style="border: 1px solid #000; padding: 10px; text-align: center; width: 48%;">
+                            <strong>CUENTA DE COBRO No: 015</strong><br>
+                            <strong>REFERENCIA DE PAGO: ${resident.depto}</strong>
+                        </div>
+                        <div style="border: 1px solid #000; padding: 10px; text-align: center; width: 48%;">
+                            <strong>PERIODO DE FACTURACIÓN:</strong><br>
+                            AGOSTO DE 2025<br>
+                            FECHA VENCIMIENTO: ${formatDate(bill.dueDate)}
+                        </div>
+                    </div>
 
-        <div style="border: 1px solid #000; padding: 10px; margin-bottom: 20px;">
-            <p><strong>APTO: ${resident.depto}</strong></p>
-            <p><strong>COPROPIETARIO:</strong> ${resident.name}</p>
-        </div>
+                    <div style="border: 1px solid #000; padding: 10px; margin-bottom: 20px;">
+                        <p><strong>APTO: ${resident.depto}</strong></p>
+                        <p><strong>COPROPIETARIO:</strong> ${resident.name}</p>
+                    </div>
 
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-            <thead>
-                <tr>
-                    <th style="border: 1px solid #000; padding: 8px; text-align: left;">CONCEPTO</th>
-                    <th style="border: 1px solid #000; padding: 8px; text-align: left;">SALDO ANT</th>
-                    <th style="border: 1px solid #000; padding: 8px; text-align: left;">ESTE MES</th>
-                    <th style="border: 1px solid #000; padding: 8px; text-align: left;">A PAGAR</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td style="border: 1px solid #000; padding: 8px;">ADMINISTRACIÓN</td>
-                    <td style="border: 1px solid #000; padding: 8px;">$ -</td>
-                    <td style="border: 1px solid #000; padding: 8px;">${formatCurrency(bill.amount)}</td>
-                    <td style="border: 1px solid #000; padding: 8px;">${formatCurrency(bill.amount)}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid #000; padding: 8px;">INTERESES</td>
-                    <td style="border: 1px solid #000; padding: 8px;">$ -</td>
-                    <td style="border: 1px solid #000; padding: 8px;">$ -</td>
-                    <td style="border: 1px solid #000; padding: 8px;">$ -</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid #000; padding: 8px;">SALDO A FAVOR</td>
-                    <td style="border: 1px solid #000; padding: 8px;">$ -</td>
-                    <td style="border: 1px solid #000; padding: 8px;">$ -</td>
-                    <td style="border: 1px solid #000; padding: 8px;">$ -</td>
-                </tr>
-                <tr style="text-align: right;">
-                    <td style="border: 1px solid #000; padding: 8px;">PAGADO MES ANT</td>
-                    <td style="border: 1px solid #000; padding: 8px;">$ 365.497</td>
-                    <td style="border: 1px solid #000; padding: 8px;"><strong>TOTAL A PAGAR</strong></td>
-                    <td style="border: 1px solid #000; padding: 8px;"><strong>${formatCurrency(bill.amount)}</strong></td>
-                </tr>
-            </tbody>
-        </table>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <thead>
+                            <tr>
+                                <th style="border: 1px solid #000; padding: 8px; text-align: left;">CONCEPTO</th>
+                                <th style="border: 1px solid #000; padding: 8px; text-align: left;">SALDO ANT</th>
+                                <th style="border: 1px solid #000; padding: 8px; text-align: left;">ESTE MES</th>
+                                <th style="border: 1px solid #000; padding: 8px; text-align: left;">A PAGAR</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 8px;">ADMINISTRACIÓN</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${formatCurrency(previousBalance)}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${formatCurrency(bill.amount)}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${formatCurrency(bill.amount)}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 8px;">INTERESES</td>
+                                <td style="border: 1px solid #000; padding: 8px;">$ -</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${formatCurrency(multa)}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${formatCurrency(multa)}</td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 8px;">SALDO A FAVOR</td>
+                                <td style="border: 1px solid #000; padding: 8px;">$ -</td>
+                                <td style="border: 1px solid #000; padding: 8px;">$ -</td>
+                                <td style="border: 1px solid #000; padding: 8px;">$ -</td>
+                            </tr>
+                            <tr style="text-align: right;">
+                                <td style="border: 1px solid #000; padding: 8px;">PAGADO MES ANT</td>
+                                <td style="border: 1px solid #000; padding: 8px;">$ -</td>
+                                <td style="border: 1px solid #000; padding: 8px;"><strong>TOTAL A PAGAR</strong></td>
+                                <td style="border: 1px solid #000; padding: 8px;"><strong>${formatCurrency(totalAmount)}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-        <div style="border: 1px solid #000; padding: 10px; text-align: center;">
-            <p>CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73</p>
-            <p>A NOMBRE DE EDIFICIO BAHÍA ETAPA A</p>
-        </div>
-    </div>
-`;
+                    <div style="border: 1px solid #000; padding: 10px; text-align: center;">
+                        <p>CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73</p>
+                        <p>A NOMBRE DE EDIFICIO BAHÍA ETAPA A</p>
+                    </div>
+                </div>
+            `;
             const options = {
                 margin: 10,
                 filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
@@ -696,18 +699,21 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const residentDoc = await db.collection('residents').doc(bill.residentId).get();
             const resident = residentDoc.data();
 
-            const previousBillsSnapshot = await db.collection('bills')
-                .where('residentId', '==', resident.id)
-                .where('status', '==', 'Pendiente')
-                .where('dueDate', '<', bill.dueDate)
-                .get();
-
+            // CAMBIO: Se añadió una verificación para asegurar que la fecha de vencimiento existe.
             let previousBalance = 0;
-            previousBillsSnapshot.forEach(doc => {
-                const prevBill = doc.data();
-                previousBalance += prevBill.amount;
-            });
+            if (bill.dueDate) {
+                const previousBillsSnapshot = await db.collection('bills')
+                    .where('residentId', '==', resident.id)
+                    .where('status', '==', 'Pendiente')
+                    .where('dueDate', '<', bill.dueDate)
+                    .get();
 
+                previousBillsSnapshot.forEach(doc => {
+                    const prevBill = doc.data();
+                    previousBalance += prevBill.amount;
+                });
+            }
+            
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             let multa = 0;
             if (dueDate && new Date() > dueDate && bill.status === 'Pendiente') {
@@ -716,7 +722,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
 
             const totalAmount = bill.amount + previousBalance + multa;
             
-           const receiptContent = `
+            const receiptContent = `
                 <div style="width: 100%; max-width: 600px; margin: auto; padding: 20px; font-family: 'Poppins', sans-serif; font-size: 14px; border: 1px solid #000;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
                         <div style="text-align: center; border: 1px solid #000; padding: 10px; width: 65%;">
