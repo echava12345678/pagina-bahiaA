@@ -456,19 +456,18 @@ billHistoryModal.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
-            // Se valida que dueDate sea un objeto de Timestamp válido
-            if (bill.dueDate && bill.dueDate instanceof firebase.firestore.Timestamp) {
-                const previousBillsSnapshot = await db.collection('bills')
-                    .where('residentId', '==', bill.residentId)
-                    .where('status', '==', 'Pendiente')
-                    .where('dueDate', '<', bill.dueDate)
-                    .get();
+            // Solución alternativa: Obtenemos todas las facturas del residente y filtramos en el cliente
+            const allBillsSnapshot = await db.collection('bills')
+                .where('residentId', '==', bill.residentId)
+                .get();
 
-                previousBillsSnapshot.forEach(doc => {
-                    const prevBill = doc.data();
+            allBillsSnapshot.forEach(doc => {
+                const prevBill = doc.data();
+                // Verificamos si la factura anterior cumple las condiciones en el cliente
+                if (prevBill.status === 'Pendiente' && prevBill.dueDate.seconds < bill.dueDate.seconds) {
                     previousBalance += prevBill.amount;
-                });
-            }
+                }
+            });
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -683,19 +682,18 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
-            // Se valida que dueDate sea un objeto de Timestamp válido
-            if (bill.dueDate && bill.dueDate instanceof firebase.firestore.Timestamp) {
-                const previousBillsSnapshot = await db.collection('bills')
-                    .where('residentId', '==', bill.residentId)
-                    .where('status', '==', 'Pendiente')
-                    .where('dueDate', '<', bill.dueDate)
-                    .get();
+            // Solución alternativa: Obtenemos todas las facturas del residente y filtramos en el cliente
+            const allBillsSnapshot = await db.collection('bills')
+                .where('residentId', '==', bill.residentId)
+                .get();
 
-                previousBillsSnapshot.forEach(doc => {
-                    const prevBill = doc.data();
+            allBillsSnapshot.forEach(doc => {
+                const prevBill = doc.data();
+                // Verificamos si la factura anterior cumple las condiciones en el cliente
+                if (prevBill.status === 'Pendiente' && prevBill.dueDate.seconds < bill.dueDate.seconds) {
                     previousBalance += prevBill.amount;
-                });
-            }
+                }
+            });
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
