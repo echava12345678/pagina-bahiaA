@@ -384,7 +384,7 @@ async function showBillHistory(residentId) {
         modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
         if (billsSnapshot.empty) {
-            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`;
+            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`; // Corregir colspan
         } else {
             billsSnapshot.forEach(doc => {
                 const bill = doc.data();
@@ -424,7 +424,7 @@ async function showBillHistory(residentId) {
 billHistoryModal.addEventListener('click', async (e) => {
     const editBtn = e.target.closest('.edit-bill-btn');
     const deleteBtn = e.target.closest('.delete-bill-btn');
-    const downloadBtn = e.target.closest('.download-receipt-btn');
+    const downloadBtn = e.target.closest('.download-receipt-btn'); // Nuevo
 
     if (editBtn) {
         const billId = editBtn.dataset.id;
@@ -446,7 +446,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                 hideSpinner();
             }
         }
-    } else if (downloadBtn) {
+    } else if (downloadBtn) { // Nueva condición para el botón de descarga
         const billId = downloadBtn.dataset.id;
         showSpinner();
         try {
@@ -454,88 +454,102 @@ billHistoryModal.addEventListener('click', async (e) => {
             const bill = billDoc.data();
             const residentDoc = await db.collection('residents').doc(bill.residentId).get();
             const resident = residentDoc.data();
-
+            
             let previousBalance = 0;
-            // Solución alternativa: Obtenemos todas las facturas del residente y filtramos en el cliente
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
                 .get();
 
             allBillsSnapshot.forEach(doc => {
                 const prevBill = doc.data();
-                // Verificamos si la factura anterior cumple las condiciones en el cliente
                 if (prevBill.status === 'Pendiente' && prevBill.dueDate.seconds < bill.dueDate.seconds) {
                     previousBalance += prevBill.amount;
                 }
             });
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0, 0, 0, 0);
-            }
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
                          (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             const multa = isLate ? bill.amount * 0.10 : 0;
             const finalAmount = bill.amount + previousBalance + multa;
             const receiptContent = `
-                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                    <div style="text-align: center; border-bottom: 2px solid #4A90E2; padding-bottom: 20px; margin-bottom: 20px;">
-                        <h1 style="color: #4A90E2; font-size: 24px; margin: 0;"><i class="fas fa-building" style="margin-right: 10px;"></i>RECIBO DE PAGO</h1>
-                        <p style="font-size: 14px; color: #777;">Gestión de Edificio</p>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                        <div>
-                            <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString('es-CO')}</p>
-                            <p><strong>Recibo No.:</strong> ${billDoc.id.substring(0, 8)}</p>
-                        </div>
-                        <div style="text-align: right;">
-                            <p><strong>Residente:</strong> ${resident.name}</p>
-                            <p><strong>Departamento:</strong> ${resident.depto}</p>
-                        </div>
-                    </div>
-                    <h2 style="font-size: 18px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">Detalles de la Factura</h2>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                        <thead>
-                            <tr style="background-color: #f2f2f2;">
-                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Concepto</th>
-                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Monto</th>
-                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Fecha Venc.</th>
-                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${bill.concept}</td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${formatCurrency(bill.amount)}</td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${formatDate(bill.dueDate)}</td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${bill.status}</td>
-                            </tr>
-                        </tbody>
+                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr>
+                            <td colspan="2" style="border: 1px solid #000; padding: 10px;">
+                                <div style="text-align: center;">
+                                    <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
+                                    Nit 901048187-4<br>
+                                    Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
+                                </div>
+                            </td>
+                        </tr>
                     </table>
-                    ${isLate ? `
-                        <p style="color: #F39C12; font-weight: 600;">¡Atención! La fecha de vencimiento ha pasado. Se ha aplicado una multa.</p>
-                        <ul style="list-style: none; padding: 0; margin-top: 15px;">
-                            <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
-                                <span>Monto de la Factura:</span>
-                                <span>${formatCurrency(bill.amount)}</span>
-                            </li>
-                            <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
-                                <span>Multa (10%):</span>
-                                <span>${formatCurrency(multa)}</span>
-                            </li>
-                        </ul>
-                    ` : ''}
-                    <div style="background-color: #eaf3ff; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: right;">
-                        <h3 style="margin: 0; font-size: 20px; color: #4A90E2;">TOTAL A PAGAR</h3>
-                        <p style="font-size: 28px; font-weight: 700; color: #4A90E2; margin: 5px 0;">${formatCurrency(finalAmount)}</p>
-                        <p style="font-size: 14px; color: #777; margin-top: 10px;">
-                            ${bill.status === 'Pagada' ? `<strong>Fecha de Pago:</strong> ${formatDate(bill.paymentDate)}` : ''}
-                        </p>
-                    </div>
-                    <div style="margin-top: 30px; text-align: center; border-top: 1px solid #ddd; padding-top: 20px;">
-                        <p style="font-size: 12px; color: #aaa;">Gracias por tu pago. Para cualquier consulta, contacta con la administración.</p>
-                        <p style="font-size: 12px; color: #aaa;">Generado por el sistema de gestión del edificio el ${new Date().toLocaleDateString('es-CO')}</p>
-                    </div>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr>
+                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
+                                <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${billDoc.id.substring(0, 8)}</span><br>
+                                <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
+                            </td>
+                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
+                                <strong>PERIODO DE FACTURACIÓN:</strong><br>
+                                ${new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).toUpperCase()}<br>
+                                <strong>FECHA VENCIMIENTO:</strong> ${formatDate(bill.dueDate)}
+                            </td>
+                        </tr>
+                    </table>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 10px;">
+                                APTO: <span style="font-weight: bold;">${resident.depto}</span><br>
+                                COPROPIETARIO: <span style="font-weight: bold;">${resident.name.toUpperCase()}</span>
+                            </td>
+                        </tr>
+                    </table>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount + previousBalance)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(0)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                        </tr>
+                    </table>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
+                                <strong>PAGADO MES ANT</strong>
+                                <br>${formatCurrency(bill.status === 'Pagada' ? bill.amount : 0)}
+                            </td>
+                            <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
+                                <strong>TOTAL A PAGAR</strong>
+                                <br><span style="font-size: 14px; font-weight: bold;">${formatCurrency(finalAmount)}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
+                                CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
+                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A
+                            </td>
+                        </tr>
+                    </table>
                 </div>
             `;
             const options = {
@@ -682,14 +696,12 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
-            // Solución alternativa: Obtenemos todas las facturas del residente y filtramos en el cliente
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
                 .get();
 
             allBillsSnapshot.forEach(doc => {
                 const prevBill = doc.data();
-                // Verificamos si la factura anterior cumple las condiciones en el cliente
                 if (prevBill.status === 'Pendiente' && prevBill.dueDate.seconds < bill.dueDate.seconds) {
                     previousBalance += prevBill.amount;
                 }
@@ -703,77 +715,89 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
                            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             
-            const multa = isLate ? bill.amount * 0.10 : 0; // 10% late fee
+            const multa = isLate ? bill.amount * 0.10 : 0;
             const finalAmount = bill.amount + previousBalance + multa;
             
             const receiptContent = `
-                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                    <div style="text-align: center; border-bottom: 2px solid #4A90E2; padding-bottom: 20px; margin-bottom: 20px;">
-                        <h1 style="color: #4A90E2; font-size: 24px; margin: 0;"><i class="fas fa-building" style="margin-right: 10px;"></i>RECIBO DE PAGO</h1>
-                        <p style="font-size: 14px; color: #777;">Gestión de Edificio</p>
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                        <div>
-                            <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString('es-CO')}</p>
-                            <p><strong>Recibo No.:</strong> ${billDoc.id.substring(0, 8)}</p>
-                        </div>
-                        <div style="text-align: right;">
-                            <p><strong>Residente:</strong> ${resident.name}</p>
-                            <p><strong>Departamento:</strong> ${resident.depto}</p>
-                        </div>
-                    </div>
-
-                    <h2 style="font-size: 18px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">Detalles de la Factura</h2>
-
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                        <thead>
-                            <tr style="background-color: #f2f2f2;">
-                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Concepto</th>
-                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Monto</th>
-                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Fecha Venc.</th>
-                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${bill.concept}</td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${formatCurrency(bill.amount)}</td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${formatDate(bill.dueDate)}</td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${bill.status}</td>
-                            </tr>
-                        </tbody>
+                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr>
+                            <td colspan="2" style="border: 1px solid #000; padding: 10px;">
+                                <div style="text-align: center;">
+                                    <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
+                                    Nit 901048187-4<br>
+                                    Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
+                                </div>
+                            </td>
+                        </tr>
                     </table>
-
-                    ${isLate ? `
-                        <p style="color: #F39C12; font-weight: 600;">¡Atención! La fecha de vencimiento ha pasado. Se ha aplicado una multa.</p>
-                        <ul style="list-style: none; padding: 0; margin-top: 15px;">
-                            <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
-                                <span>Monto de la Factura:</span>
-                                <span>${formatCurrency(bill.amount)}</span>
-                            </li>
-                            <li style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ddd;">
-                                <span>Multa (10%):</span>
-                                <span>${formatCurrency(multa)}</span>
-                            </li>
-                        </ul>
-                    ` : ''}
-
-                    <div style="background-color: #eaf3ff; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: right;">
-                        <h3 style="margin: 0; font-size: 20px; color: #4A90E2;">TOTAL A PAGAR</h3>
-                        <p style="font-size: 28px; font-weight: 700; color: #4A90E2; margin: 5px 0;">${formatCurrency(finalAmount)}</p>
-                        <p style="font-size: 14px; color: #777; margin-top: 10px;">
-                            ${bill.status === 'Pagada' ? `<strong>Fecha de Pago:</strong> ${formatDate(bill.paymentDate)}` : ''}
-                        </p>
-                    </div>
-
-                    <div style="margin-top: 30px; text-align: center; border-top: 1px solid #ddd; padding-top: 20px;">
-                        <p style="font-size: 12px; color: #aaa;">Gracias por tu pago. Para cualquier consulta, contacta con la administración.</p>
-                        <p style="font-size: 12px; color: #aaa;">Generado por el sistema de gestión del edificio el ${new Date().toLocaleDateString('es-CO')}</p>
-                    </div>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr>
+                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
+                                <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${billDoc.id.substring(0, 8)}</span><br>
+                                <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
+                            </td>
+                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
+                                <strong>PERIODO DE FACTURACIÓN:</strong><br>
+                                ${new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).toUpperCase()}<br>
+                                <strong>FECHA VENCIMIENTO:</strong> ${formatDate(bill.dueDate)}
+                            </td>
+                        </tr>
+                    </table>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 10px;">
+                                APTO: <span style="font-weight: bold;">${resident.depto}</span><br>
+                                COPROPIETARIO: <span style="font-weight: bold;">${resident.name.toUpperCase()}</span>
+                            </td>
+                        </tr>
+                    </table>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount + previousBalance)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                        </tr>
+                    </table>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
+                                <strong>PAGADO MES ANT</strong>
+                                <br>${formatCurrency(bill.status === 'Pagada' ? bill.amount : 0)}
+                            </td>
+                            <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
+                                <strong>TOTAL A PAGAR</strong>
+                                <br><span style="font-size: 14px; font-weight: bold;">${formatCurrency(finalAmount)}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
+                                CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
+                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A
+                            </td>
+                        </tr>
+                    </table>
                 </div>
             `;
-
             const options = {
                 margin: 10,
                 filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
@@ -781,7 +805,6 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                 html2canvas: { scale: 2 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-
             html2pdf().from(receiptContent).set(options).save();
         } catch (err) {
             console.error("Error generating PDF:", err);
@@ -792,47 +815,73 @@ residentBillsTableBody.addEventListener('click', async (e) => {
     }
 });
 
-// Change resident credentials
-showChangePasswordBtn.addEventListener('click', () => {
-    credentialsError.textContent = '';
-    credentialsSuccess.textContent = '';
-    toggleSection('change-credentials-form');
-});
-
-changeCredentialsFormInner.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const oldUsername = changeCredentialsFormInner['old-username'].value;
-    const oldPassword = changeCredentialsFormInner['old-password'].value;
-    const newUsername = changeCredentialsFormInner['new-username'].value;
-    const newPassword = changeCredentialsFormInner['new-password'].value;
-    
-    credentialsError.textContent = '';
-    credentialsSuccess.textContent = '';
+async function showEditBillModal(billId) {
     showSpinner();
-
     try {
-        const residentDoc = await db.collection('residents').doc(currentResidentId).get();
-        const resident = residentDoc.data();
-
-        if (resident.username === oldUsername && resident.password === oldPassword) {
-            await db.collection('residents').doc(currentResidentId).update({
-                username: newUsername,
-                password: newPassword,
-                credentialsChanged: true
-            });
-            credentialsSuccess.textContent = 'Credenciales actualizadas exitosamente.';
-            changeCredentialsFormInner.reset();
-            const updatedResidentDoc = await db.collection('residents').doc(currentResidentId).get();
-            const updatedResident = updatedResidentDoc.data();
-            residentWelcome.textContent = `Bienvenido, ${updatedResident.name}`;
-        } else {
-            credentialsError.textContent = 'Usuario o contraseña actual incorrectos.';
-        }
+        const billDoc = await db.collection('bills').doc(billId).get();
+        const bill = billDoc.data();
+        editBillForm['edit-bill-id'].value = billId;
+        editBillForm['edit-bill-due-date'].value = bill.dueDate ? new Date(bill.dueDate.seconds * 1000).toISOString().slice(0, 10) : '';
+        editBillForm['edit-bill-amount'].value = bill.amount;
+        editBillForm['edit-bill-concept'].value = bill.concept;
+        editBillForm['edit-bill-status'].value = bill.status;
+        editBillForm['edit-bill-payment-date'].value = bill.status === 'Pagada' && bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000).toISOString().slice(0, 10) : '';
+        
+        billHistoryModal.classList.remove('active');
+        editBillModal.classList.add('active');
     } catch (err) {
-        console.error("Error changing credentials:", err);
-        credentialsError.textContent = 'Error al cambiar credenciales. Intenta de nuevo.';
+        console.error("Error loading bill for edit:", err);
+        alert('Error al cargar los datos de la factura.');
     } finally {
         hideSpinner();
-        toggleSection(null);
+    }
+}
+
+editBillForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const billId = editBillForm['edit-bill-id'].value;
+    const dueDate = editBillForm['edit-bill-due-date'].value;
+    const amount = parseFloat(editBillForm['edit-bill-amount'].value);
+    const concept = editBillForm['edit-bill-concept'].value;
+    const status = editBillForm['edit-bill-status'].value;
+    const paymentDate = editBillForm['edit-bill-payment-date'].value;
+
+    showSpinner();
+    try {
+        await db.collection('bills').doc(billId).update({
+            dueDate: firebase.firestore.Timestamp.fromDate(new Date(dueDate)),
+            amount,
+            concept,
+            status,
+            paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(new Date(paymentDate)) : null,
+        });
+        alert('Factura actualizada exitosamente.');
+        editBillModal.classList.remove('active');
+        if (currentResidentId) {
+            showBillHistory(currentResidentId);
+        }
+    } catch (err) {
+        console.error("Error updating bill:", err);
+        alert('Error al actualizar factura.');
+    } finally {
+        hideSpinner();
+    }
+});
+
+
+// --- Solución del Cierre de Modales: Delegación de Eventos ---
+// Un solo listener que maneja todos los cierres y cancelaciones.
+document.body.addEventListener('click', (e) => {
+    // Cierra cualquier modal si el clic fue en un botón con la clase .close-btn
+    const closeBtn = e.target.closest('.close-btn');
+    if (closeBtn) {
+        const modal = closeBtn.closest('.modal');
+        if (modal) {
+            modal.classList.remove('active');
+            // Si el modal de edición se cierra, muestra el de historial nuevamente
+            if (modal.id === 'edit-bill-modal' && currentResidentId) {
+                showBillHistory(currentResidentId);
+            }
+        }
     }
 });
