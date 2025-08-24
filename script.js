@@ -1,4 +1,4 @@
-// Hola!! si estas chismoseando el codigo :)
+/ Hola!! si estas chismoseando el codigo :)
 // Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyBQQbZeHB9thJ0iy3c3c30k3ERCYvRoDQMM",
@@ -686,9 +686,7 @@ billHistoryModal.addEventListener('click', async (e) => {
     }
 });
 
-***
-
-**async function showEditBillModal(billId)** {
+async function showEditBillModal(billId) {
     showSpinner();
     try {
         const billDoc = await db.collection('bills').doc(billId).get();
@@ -696,13 +694,10 @@ billHistoryModal.addEventListener('click', async (e) => {
         editBillForm['edit-bill-id'].value = billId;
 
         // Corrección de la fecha:
-        const dueDateTimestamp = bill.dueDate;
-        if (dueDateTimestamp) {
-            const date = new Date(dueDateTimestamp.seconds * 1000);
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            **editBillForm['edit-bill-due-date'].value = `${year}-${month}-${day}`;**
+        const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
+        if (dueDate) {
+            const localDueDate = new Date(dueDate.getTime() - dueDate.getTimezoneOffset() * 60000);
+            editBillForm['edit-bill-due-date'].value = localDueDate.toISOString().slice(0, 10);
         } else {
             editBillForm['edit-bill-due-date'].value = '';
         }
@@ -715,13 +710,10 @@ billHistoryModal.addEventListener('click', async (e) => {
         editBillForm['edit-bill-paid-amount'].value = bill.paidAmount || '';
 
         // Corrección de la fecha de pago:
-        const paymentDateTimestamp = bill.paymentDate;
-        if (paymentDateTimestamp) {
-            const date = new Date(paymentDateTimestamp.seconds * 1000);
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            **editBillForm['edit-bill-payment-date'].value = `${year}-${month}-${day}`;**
+        const paymentDate = bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000) : null;
+        if (paymentDate) {
+            const localPaymentDate = new Date(paymentDate.getTime() - paymentDate.getTimezoneOffset() * 60000);
+            editBillForm['edit-bill-payment-date'].value = localPaymentDate.toISOString().slice(0, 10);
         } else {
             editBillForm['edit-bill-payment-date'].value = '';
         }
@@ -736,7 +728,7 @@ billHistoryModal.addEventListener('click', async (e) => {
     }
 }
 
-**editBillForm.addEventListener('submit', async (e)** => {
+editBillForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const billId = editBillForm['edit-bill-id'].value;
     const dueDate = editBillForm['edit-bill-due-date'].value;
@@ -748,23 +740,19 @@ billHistoryModal.addEventListener('click', async (e) => {
 
     showSpinner();
     try {
-        // SOLUCIÓN: Usar la fecha en formato YYYY-MM-DD para crear una fecha UTC
-        const **utcDueDate = new Date(dueDate + 'T00:00:00Z');**
-        const **utcPaymentDate = paymentDate ? new Date(paymentDate + 'T00:00:00Z') : null;**
+        const localDueDate = new Date(dueDate);
+        const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
 
         await db.collection('bills').doc(billId).update({
-            dueDate: firebase.firestore.Timestamp.fromDate(**utcDueDate**),
+            dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
             amount,
             concept,
             status,
-            paymentDate: **utcPaymentDate ? firebase.firestore.Timestamp.fromDate(utcPaymentDate) : null**,
+            paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
             paidAmount: paidAmount // Nuevo campo
         });
         alert('Factura actualizada exitosamente.');
         editBillModal.classList.remove('active');
-        if (currentResidentId) {
-            showBillHistory(currentResidentId);
-        }
     } catch (err) {
         console.error("Error updating bill:", err);
         alert('Error al actualizar factura.');
