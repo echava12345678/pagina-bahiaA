@@ -460,8 +460,8 @@ billHistoryModal.addEventListener('click', async (e) => {
             const residentDoc = await db.collection('residents').doc(bill.residentId).get();
             const resident = residentDoc.data();
 
-            // CAMBIO: Se añadió una verificación para asegurar que la fecha de vencimiento existe.
             let previousBalance = 0;
+            // CAMBIO: Aseguramos que la fecha de vencimiento existe antes de intentar la consulta.
             if (bill.dueDate) {
                 const previousBillsSnapshot = await db.collection('bills')
                     .where('residentId', '==', resident.id)
@@ -474,7 +474,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                     previousBalance += prevBill.amount;
                 });
             }
-            
+
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             let multa = 0;
             if (dueDate && new Date() > dueDate && bill.status === 'Pendiente') {
@@ -699,8 +699,8 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const residentDoc = await db.collection('residents').doc(bill.residentId).get();
             const resident = residentDoc.data();
 
-            // CAMBIO: Se añadió una verificación para asegurar que la fecha de vencimiento existe.
             let previousBalance = 0;
+            // CAMBIO: Se añadió una verificación para asegurar que la fecha de vencimiento existe.
             if (bill.dueDate) {
                 const previousBillsSnapshot = await db.collection('bills')
                     .where('residentId', '==', resident.id)
@@ -713,7 +713,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                     previousBalance += prevBill.amount;
                 });
             }
-            
+
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             let multa = 0;
             if (dueDate && new Date() > dueDate && bill.status === 'Pendiente') {
