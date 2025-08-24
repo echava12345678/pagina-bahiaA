@@ -686,7 +686,9 @@ billHistoryModal.addEventListener('click', async (e) => {
     }
 });
 
-async function showEditBillModal(billId) {
+***
+
+**async function showEditBillModal(billId)** {
     showSpinner();
     try {
         const billDoc = await db.collection('bills').doc(billId).get();
@@ -694,13 +696,13 @@ async function showEditBillModal(billId) {
         editBillForm['edit-bill-id'].value = billId;
 
         // Corrección de la fecha:
-          const dueDateTimestamp = bill.dueDate;
+        const dueDateTimestamp = bill.dueDate;
         if (dueDateTimestamp) {
             const date = new Date(dueDateTimestamp.seconds * 1000);
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
-            editBillForm['edit-bill-due-date'].value = `${year}-${month}-${day}`;
+            **editBillForm['edit-bill-due-date'].value = `${year}-${month}-${day}`;**
         } else {
             editBillForm['edit-bill-due-date'].value = '';
         }
@@ -719,11 +721,10 @@ async function showEditBillModal(billId) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
-            editBillForm['edit-bill-payment-date'].value = `${year}-${month}-${day}`;
+            **editBillForm['edit-bill-payment-date'].value = `${year}-${month}-${day}`;**
         } else {
             editBillForm['edit-bill-payment-date'].value = '';
         }
-
 
         billHistoryModal.classList.remove('active');
         editBillModal.classList.add('active');
@@ -735,7 +736,7 @@ async function showEditBillModal(billId) {
     }
 }
 
-editBillForm.addEventListener('submit', async (e) => {
+**editBillForm.addEventListener('submit', async (e)** => {
     e.preventDefault();
     const billId = editBillForm['edit-bill-id'].value;
     const dueDate = editBillForm['edit-bill-due-date'].value;
@@ -748,20 +749,19 @@ editBillForm.addEventListener('submit', async (e) => {
     showSpinner();
     try {
         // SOLUCIÓN: Usar la fecha en formato YYYY-MM-DD para crear una fecha UTC
-        const utcDueDate = new Date(dueDate + 'T00:00:00Z');
-        const utcPaymentDate = paymentDate ? new Date(paymentDate + 'T00:00:00Z') : null;
+        const **utcDueDate = new Date(dueDate + 'T00:00:00Z');**
+        const **utcPaymentDate = paymentDate ? new Date(paymentDate + 'T00:00:00Z') : null;**
 
         await db.collection('bills').doc(billId).update({
-            dueDate: firebase.firestore.Timestamp.fromDate(utcDueDate),
+            dueDate: firebase.firestore.Timestamp.fromDate(**utcDueDate**),
             amount,
             concept,
             status,
-            paymentDate: utcPaymentDate ? firebase.firestore.Timestamp.fromDate(utcPaymentDate) : null,
+            paymentDate: **utcPaymentDate ? firebase.firestore.Timestamp.fromDate(utcPaymentDate) : null**,
             paidAmount: paidAmount // Nuevo campo
         });
         alert('Factura actualizada exitosamente.');
         editBillModal.classList.remove('active');
-        // Recargar la tabla para mostrar los cambios
         if (currentResidentId) {
             showBillHistory(currentResidentId);
         }
