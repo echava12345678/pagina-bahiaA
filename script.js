@@ -37,7 +37,7 @@ const editBillForm = document.getElementById('edit-bill-form');
 const residentSearch = document.getElementById('resident-search');
 const excelFile = document.getElementById('excel-file');
 const showAddResidentBtn = document.getElementById('show-add-resident-btn');
-const showAddBillBtn = document.getElementById('show-add-bill-btn');
+const showAddBillBtn = document = document.getElementById('show-add-bill-btn');
 const showUploadBillsBtn = document.getElementById('show-upload-bills-btn');
 const addResidentFormSection = document.getElementById('add-resident-form');
 const addBillFormSection = document.getElementById('add-bill-form');
@@ -299,7 +299,7 @@ billForm.addEventListener('submit', async (e) => {
     try {
         const localDueDate = new Date(dueDate);
         const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
-        
+
         await db.collection('bills').add({
             residentId,
             dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
@@ -331,10 +331,14 @@ excelFile.addEventListener('change', async (e) => {
     const reader = new FileReader();
     reader.onload = async (event) => {
         const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, {
+            type: 'array'
+        });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        const json = XLSX.utils.sheet_to_json(worksheet, {
+            header: 1
+        });
 
         const header = json[0];
         const rows = json.slice(1);
@@ -470,7 +474,7 @@ billHistoryModal.addEventListener('click', async (e) => {
             const bill = billDoc.data();
             const residentDoc = await db.collection('residents').doc(bill.residentId).get();
             const resident = residentDoc.data();
-            
+
             let previousBalance = 0;
             let accumulatedCredit = 0;
 
@@ -478,8 +482,11 @@ billHistoryModal.addEventListener('click', async (e) => {
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
                 .get();
-            
-            const allBills = allBillsSnapshot.docs.map(doc => ({ ...doc.data(), createdAt: doc.data().createdAt?.seconds || 0 }));
+
+            const allBills = allBillsSnapshot.docs.map(doc => ({
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.seconds || 0
+            }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
             allBills.forEach(prevBill => {
@@ -494,16 +501,16 @@ billHistoryModal.addEventListener('click', async (e) => {
                     }
                 }
             });
-            
+
             // FIX: Lógica de cálculo corregida para el PDF
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
                 dueDate.setHours(0, 0, 0, 0);
             }
 
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
-                           (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
-            
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
+                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+
             const multa = isLate ? bill.amount * 0.015 : 0;
             const totalDue = bill.amount + previousBalance + multa;
             const paidThisMonth = bill.paidAmount || 0;
@@ -522,7 +529,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
                         <tr>
-                            <td colspan="2" style="border: 1px solid #000; padding: 10px;">
+                            <td style="border: 1px solid #000; padding: 10px;">
                                 <div style="text-align: center;">
                                     <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
                                     Nit 901048187-4<br>
@@ -530,8 +537,8 @@ billHistoryModal.addEventListener('click', async (e) => {
                                 </div>
                             </td>
                             <td style="border: 1px solid #000; padding: 10px; text-align: right;">
-<img src="logo bahia a.png" alt="Logo" style="max-height: 50px;">
-</td>
+                                <img src="logo.png" alt="Logo" style="max-height: 50px;">
+                            </td>
                         </tr>
                     </table>
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -542,7 +549,10 @@ billHistoryModal.addEventListener('click', async (e) => {
                             </td>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
                                 <strong>PERIODO DE FACTURACIÓN:</strong><br>
-                                ${new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).toUpperCase()}<br>
+                                ${new Date().toLocaleDateString('es-CO', {
+                                    month: 'long',
+                                    year: 'numeric'
+                                }).toUpperCase()}<br>
                                 <strong>FECHA VENCIMIENTO:</strong> ${formatDate(bill.dueDate)}
                             </td>
                         </tr>
@@ -604,9 +614,18 @@ billHistoryModal.addEventListener('click', async (e) => {
             const options = {
                 margin: 10,
                 filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                image: {
+                    type: 'jpeg',
+                    quality: 0.98
+                },
+                html2canvas: {
+                    scale: 2
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait'
+                }
             };
             html2pdf().from(receiptContent).set(options).save();
         } catch (err) {
@@ -624,7 +643,7 @@ async function showEditBillModal(billId) {
         const billDoc = await db.collection('bills').doc(billId).get();
         const bill = billDoc.data();
         editBillForm['edit-bill-id'].value = billId;
-        
+
         // Corrección de la fecha:
         const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
         if (dueDate) {
@@ -633,7 +652,7 @@ async function showEditBillModal(billId) {
         } else {
             editBillForm['edit-bill-due-date'].value = '';
         }
-        
+
         editBillForm['edit-bill-amount'].value = bill.amount;
         editBillForm['edit-bill-concept'].value = bill.concept;
         editBillForm['edit-bill-status'].value = bill.status;
@@ -649,7 +668,7 @@ async function showEditBillModal(billId) {
         } else {
             editBillForm['edit-bill-payment-date'].value = '';
         }
-        
+
         billHistoryModal.classList.remove('active');
         editBillModal.classList.add('active');
     } catch (err) {
@@ -668,13 +687,13 @@ editBillForm.addEventListener('submit', async (e) => {
     const concept = editBillForm['edit-bill-concept'].value;
     const status = editBillForm['edit-bill-status'].value;
     const paymentDate = editBillForm['edit-bill-payment-date'].value;
-    const paidAmount = parseCurrency(editBillForm['edit-bill-paid-amount'].value) || 0; // FIX: Uso de parseCurrency
+    const paidAmount = parseCurrency(editBillForm['edit-bill-paid-amount'].value) || 0;
 
     showSpinner();
     try {
         const localDueDate = new Date(dueDate);
         const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
-        
+
         await db.collection('bills').doc(billId).update({
             dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
             amount,
@@ -711,6 +730,49 @@ document.body.addEventListener('click', (e) => {
     }
 });
 
+// FIX: Event listener para el formulario de cambio de credenciales
+changeCredentialsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newUsername = changeCredentialsForm['new-username'].value;
+    const newPassword = changeCredentialsForm['new-password'].value;
+    const confirmPassword = changeCredentialsForm['confirm-password'].value;
+
+    credentialsError.textContent = '';
+    credentialsSuccess.textContent = '';
+
+    if (!newUsername || !newPassword || !confirmPassword) {
+        credentialsError.textContent = 'Por favor, completa todos los campos.';
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        credentialsError.textContent = 'Las contraseñas no coinciden.';
+        return;
+    }
+
+    if (!currentResidentId) {
+        credentialsError.textContent = 'Error: No se ha seleccionado un residente. Por favor, reinicia la página.';
+        return;
+    }
+
+    showSpinner();
+    try {
+        await db.collection('residents').doc(currentResidentId).update({
+            username: newUsername,
+            password: newPassword,
+            credentialsChanged: true
+        });
+        credentialsSuccess.textContent = 'Credenciales actualizadas exitosamente.';
+        changeCredentialsForm.reset();
+        loadResidents(); // Refresh the table to show updated username
+    } catch (err) {
+        console.error("Error updating credentials:", err);
+        credentialsError.textContent = 'Error al actualizar credenciales. Intenta de nuevo.';
+    } finally {
+        hideSpinner();
+    }
+});
+
 // --- Resident Panel Functions ---
 
 async function loadResidentBills(residentId) {
@@ -730,7 +792,7 @@ async function loadResidentBills(residentId) {
                     dueDate.setHours(0, 0, 0, 0);
                 }
                 const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
-                
+
                 const row = residentBillsTableBody.insertRow();
                 row.dataset.id = doc.id;
                 // FIX: Agregadas las columnas de monto y fecha de pago para igualar la vista de admin
@@ -771,13 +833,16 @@ residentBillsTableBody.addEventListener('click', async (e) => {
 
             let previousBalance = 0;
             let accumulatedCredit = 0;
-            
+
             // FIX: Removida la cláusula orderBy y se ordenará en el cliente para evitar el error de índice
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
                 .get();
 
-            const allBills = allBillsSnapshot.docs.map(doc => ({ ...doc.data(), createdAt: doc.data().createdAt?.seconds || 0 }));
+            const allBills = allBillsSnapshot.docs.map(doc => ({
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.seconds || 0
+            }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
             allBills.forEach(prevBill => {
@@ -792,16 +857,16 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                     }
                 }
             });
-            
+
             // FIX: Lógica de cálculo corregida para el PDF
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
                 dueDate.setHours(0, 0, 0, 0);
             }
 
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
-                           (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
-            
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
+                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+
             const multa = isLate ? bill.amount * 0.015 : 0;
             const totalDue = bill.amount + previousBalance + multa;
             const paidThisMonth = bill.paidAmount || 0;
@@ -820,7 +885,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
                         <tr>
-                            <td colspan="2" style="border: 1px solid #000; padding: 10px;">
+                            <td style="border: 1px solid #000; padding: 10px;">
                                 <div style="text-align: center;">
                                     <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
                                     Nit 901048187-4<br>
@@ -828,8 +893,8 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                                 </div>
                             </td>
                             <td style="border: 1px solid #000; padding: 10px; text-align: right;">
-<img src="logo bahia a.png" alt="Logo" style="max-height: 50px;">
-</td>
+                                <img src="logo.png" alt="Logo" style="max-height: 50px;">
+                            </td>
                         </tr>
                     </table>
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -840,7 +905,10 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                             </td>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
                                 <strong>PERIODO DE FACTURACIÓN:</strong><br>
-                                ${new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).toUpperCase()}<br>
+                                ${new Date().toLocaleDateString('es-CO', {
+                                    month: 'long',
+                                    year: 'numeric'
+                                }).toUpperCase()}<br>
                                 <strong>FECHA VENCIMIENTO:</strong> ${formatDate(bill.dueDate)}
                             </td>
                         </tr>
@@ -902,9 +970,18 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const options = {
                 margin: 10,
                 filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                image: {
+                    type: 'jpeg',
+                    quality: 0.98
+                },
+                html2canvas: {
+                    scale: 2
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait'
+                }
             };
             html2pdf().from(receiptContent).set(options).save();
         } catch (err) {
