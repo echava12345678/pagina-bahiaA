@@ -1,4 +1,4 @@
-/ Hola!! si estas chismoseando el codigo :)
+// Hola!! si estas chismoseando el codigo :)
 // Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyBQQbZeHB9thJ0iy3c3c30k3ERCYvRoDQMM",
