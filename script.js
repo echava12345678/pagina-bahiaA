@@ -475,9 +475,13 @@ billHistoryModal.addEventListener('click', async (e) => {
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
                            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             
+            // --- INICIO: Lógica Corregida ---
+            const currentAmountToPay = bill.status === 'Pendiente' ? bill.amount : 0;
             const multa = isLate ? bill.amount * 0.10 : 0;
-            const finalAmount = bill.amount + previousBalance + multa;
-            
+            const finalAmount = currentAmountToPay + previousBalance + multa;
+            const paidThisMonth = bill.status === 'Pagada' ? bill.amount : 0;
+            // --- FIN: Lógica Corregida ---
+
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -522,8 +526,8 @@ billHistoryModal.addEventListener('click', async (e) => {
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount + previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay + previousBalance)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
@@ -542,7 +546,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                         <tr>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
                                 <strong>PAGADO MES ANT</strong>
-                                <br>${formatCurrency(bill.status === 'Pagada' ? bill.amount : 0)}
+                                <br>${formatCurrency(paidThisMonth)}
                             </td>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
                                 <strong>TOTAL A PAGAR</strong>
@@ -718,8 +722,12 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
                            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             
+            // --- INICIO: Lógica Corregida ---
+            const currentAmountToPay = bill.status === 'Pendiente' ? bill.amount : 0;
             const multa = isLate ? bill.amount * 0.10 : 0;
-            const finalAmount = bill.amount + previousBalance + multa;
+            const finalAmount = currentAmountToPay + previousBalance + multa;
+            const paidThisMonth = bill.status === 'Pagada' ? bill.amount : 0;
+            // --- FIN: Lógica Corregida ---
             
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -765,8 +773,8 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount + previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay + previousBalance)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
@@ -785,7 +793,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         <tr>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
                                 <strong>PAGADO MES ANT</strong>
-                                <br>${formatCurrency(bill.status === 'Pagada' ? bill.amount : 0)}
+                                <br>${formatCurrency(paidThisMonth)}
                             </td>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
                                 <strong>TOTAL A PAGAR</strong>
