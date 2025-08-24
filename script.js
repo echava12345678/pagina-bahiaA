@@ -1,7 +1,7 @@
 // Hola!! si estas chismoseando el codigo :)
 // Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyBQQbZeHBV9thJ0iy3c30k3ERCYvRoDQMM",
+    apiKey: "AIzaSyBQQbZeHBV9thJ0iy3c3c30k3ERCYvRoDQMM",
     authDomain: "bahiaa.firebaseapp.com",
     projectId: "bahiaa",
     storageBucket: "bahiaa.firebasestorage.app",
@@ -456,9 +456,10 @@ billHistoryModal.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
-            if (bill.dueDate) {
+            // CORRECCIÓN: Se añade esta verificación para evitar el error
+            if (bill.dueDate && bill.dueDate instanceof firebase.firestore.Timestamp) {
                 const previousBillsSnapshot = await db.collection('bills')
-                    .where('residentId', '==', resident.id)
+                    .where('residentId', '==', bill.residentId)
                     .where('status', '==', 'Pendiente')
                     .where('dueDate', '<', bill.dueDate)
                     .get();
@@ -682,10 +683,10 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
-            // CORRECCIÓN: Se añade esta verificación para evitar el error
-            if (bill.dueDate) {
+            // CORRECCIÓN: Se añade una verificación más robusta para evitar el error
+            if (bill.dueDate && bill.dueDate instanceof firebase.firestore.Timestamp) {
                 const previousBillsSnapshot = await db.collection('bills')
-                    .where('residentId', '==', resident.id)
+                    .where('residentId', '==', bill.residentId)
                     .where('status', '==', 'Pendiente')
                     .where('dueDate', '<', bill.dueDate)
                     .get();
