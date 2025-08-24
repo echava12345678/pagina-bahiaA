@@ -48,15 +48,9 @@ const showChangePasswordBtn = document.getElementById('show-change-password-form
 const credentialsError = document.getElementById('credentials-error');
 const credentialsSuccess = document.getElementById('credentials-success');
 const loadingSpinner = document.getElementById('loading-spinner');
-// NOMBRES DE LOS ELEMENTOS AÑADIDOS
-const showSendEmailsBtn = document.getElementById('show-send-emails-btn');
-const sendEmailsBtn = document.getElementById('send-emails-btn');
-const sendAllEmailsBtn = document.getElementById('send-all-emails-btn');
-
 
 // Global variables
 let currentResidentId = null;
-let currentResident = null; // Variable para guardar los datos del residente actual
 
 // --- Utility Functions ---
 
@@ -134,12 +128,11 @@ loginForm.addEventListener('submit', async (e) => {
             if (!residentSnapshot.empty) {
                 const resident = residentSnapshot.docs[0].data();
                 const residentId = residentSnapshot.docs[0].id;
-                currentResident = resident;
-                currentResidentId = residentId;
 
                 if (resident.password === password) {
                     showPage(residentPanel);
                     residentWelcome.textContent = `Bienvenido, ${resident.name}`;
+                    currentResidentId = residentId;
                     loadResidentBills(currentResidentId);
                 } else {
                     loginError.textContent = 'Contraseña incorrecta.';
@@ -182,7 +175,6 @@ residentForm.addEventListener('submit', async (e) => {
     const depto = residentForm['resident-depto'].value;
     const username = residentForm['resident-username'].value;
     const password = residentForm['resident-password'].value;
-    const email = residentForm['resident-email'].value;
 
     showSpinner();
     try {
@@ -192,9 +184,7 @@ residentForm.addEventListener('submit', async (e) => {
             username,
             password,
             initialPassword: password,
-            credentialsChanged: false,
-            email,
-            currentCredit: 0 // Nuevo campo para el saldo a favor
+            credentialsChanged: false
         });
         alert('Residente agregado exitosamente.');
         residentForm.reset();
@@ -223,7 +213,6 @@ async function loadResidents() {
                 <td>${resident.name}</td>
                 <td>${resident.depto}</td>
                 <td>${resident.username}</td>
-                <td>${formatCurrency(resident.currentCredit || 0)}</td>
                 <td>
                     <button class="btn primary-btn view-bills-btn" data-id="${doc.id}">
                         <i class="fas fa-eye"></i> Ver Facturas
@@ -367,11 +356,7 @@ billForm.addEventListener('submit', async (e) => {
             const resident = residentDoc.data();
             const emailSubject = `Nueva Factura: ${concept}`;
             const emailBody = `Hola ${resident.name},\n\nSe ha generado una nueva factura en tu perfil por el concepto de ${concept} con un valor de ${formatCurrency(amount)}.\n\nPor favor, ingresa a tu perfil para verificar los detalles.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
-            if (resident.email) {
-                await sendEmail(resident.email, emailSubject, emailBody);
-            } else {
-                console.warn(`Residente con ID ${residentId} no tiene correo electrónico.`);
-            }
+            await sendEmail(resident.email, emailSubject, emailBody);
         } else {
             console.error("No se encontró al residente para enviar la notificación.");
         }
@@ -436,7 +421,7 @@ excelFile.addEventListener('change', async (e) => {
                         amount: parseFloat(row[amountIndex]),
                         concept: row[conceptIndex] || 'Sin concepto',
                         status: row[statusIndex] || 'Pendiente',
-                        paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
+                        paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(paymentDate) : null,
                         paidAmount: paidAmount, // Nuevo campo
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
@@ -463,52 +448,32 @@ async function showBillHistory(residentId) {
     billHistoryTableBody.innerHTML = '';
     try {
         const residentDoc = await db.collection('residents').doc(residentId).get();
-        currentResident = residentDoc.data();
-        modalTitle.textContent = `Facturas de ${currentResident.name} (Depto: ${currentResident.depto})`;
+        const resident = residentDoc.data();
+        modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
         if (billsSnapshot.empty) {
             billHistoryTableBody.innerHTML = `<tr><td colspan="8">No se encontraron facturas para este residente.</td></tr>`;
         } else {
-            // Sort bills by creation date
-            const bills = billsSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            bills.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-
-            let currentCredit = currentResident.currentCredit || 0;
-
-            bills.forEach(bill => {
+            billsSnapshot.forEach(doc => {
+                const bill = doc.data();
                 const row = billHistoryTableBody.insertRow();
-                let amountToPay = bill.amount;
-                let appliedCredit = 0;
-
-                // Apply credit to the bill
-                if (currentCredit > 0 && bill.status === 'Pendiente') {
-                    appliedCredit = Math.min(amountToPay, currentCredit);
-                    amountToPay -= appliedCredit;
-                    currentCredit -= appliedCredit;
-                }
-
-                row.dataset.id = bill.id;
                 row.innerHTML = `
                     <td>${formatDate(bill.dueDate)}</td>
                     <td>${formatCurrency(bill.amount)}</td>
-                    <td>${formatCurrency(appliedCredit)}</td>
                     <td>${formatCurrency(bill.paidAmount || 0)}</td>
                     <td>${bill.concept}</td>
                     <td class="status-${bill.status.toLowerCase().replace(' ', '-')}">${bill.status}</td>
                     <td>${formatDate(bill.paymentDate)}</td>
                     <td>
-                        <button class="btn secondary-btn edit-bill-btn" data-id="${bill.id}">
+                        <button class="btn secondary-btn edit-bill-btn" data-id="${doc.id}">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn logout-btn delete-bill-btn" data-id="${bill.id}">
+                        <button class="btn logout-btn delete-bill-btn" data-id="${doc.id}">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
                     <td>
-                        <button class="btn primary-btn download-receipt-btn" data-id="${bill.id}">
+                        <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
                             <i class="fas fa-file-download"></i>
                         </button>
                     </td>
@@ -560,455 +525,54 @@ billHistoryModal.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
+            let accumulatedCredit = 0;
+
+            // FIX: Removida la cláusula orderBy y se ordenará en el cliente para evitar el error de índice
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
-                .orderBy('createdAt')
                 .get();
 
-            let foundCurrentBill = false;
-            allBillsSnapshot.forEach(doc => {
-                if (doc.id === billId) {
-                    foundCurrentBill = true;
-                }
-                if (!foundCurrentBill && doc.data().status === 'Pendiente') {
-                    const prevBill = doc.data();
-                    const prevDueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
-                    const isLate = prevDueDate && new Date() > prevDueDate;
-                    const prevMulta = isLate ? prevBill.amount * 0.015 : 0;
-                    previousBalance += prevBill.amount + prevMulta;
-                }
-            });
-            
-            const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate);
-            const multa = isLate ? bill.amount * 0.015 : 0;
-
-            const totalDueBeforeCredit = previousBalance + bill.amount + multa;
-            let currentCredit = resident.currentCredit || 0;
-            let creditAppliedToThisBill = 0;
-
-            if (totalDueBeforeCredit > 0 && currentCredit > 0) {
-              creditAppliedToThisBill = Math.min(totalDueBeforeCredit, currentCredit);
-            }
-
-            let finalAmount = totalDueBeforeCredit - creditAppliedToThisBill;
-            const paidThisMonth = bill.paidAmount || 0;
-
-            // Lógica corregida: Si la factura está pagada, el total a pagar es 0
-            if (bill.status === 'Pagada' && paidThisMonth >= bill.amount) {
-                finalAmount = 0;
-            }
-
-            const receiptContent = `
-                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 10px;">
-                                <div style="text-align: center;">
-                                    <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
-                                    Nit 901048187-4<br>
-                                    Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
-                                </div>
-                            </td>
-                            <td style="border: 1px solid #000; padding: 10px; text-align: right;">
-                                <img src="logo bahia a.png" alt="Logo" style="max-height: 50px;">
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${billDoc.id.substring(0, 8)}</span><br>
-                                <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
-                            </td>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PERIODO DE FACTURACIÓN:</strong><br>
-                                ${new Date().toLocaleDateString('es-CO', {
-                                    month: 'long',
-                                    year: 'numeric'
-                                }).toUpperCase()}<br>
-                                <strong>FECHA VENCIMIENTO:</strong> ${formatDate(bill.dueDate)}
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 10px;">
-                                APTO: <span style="font-weight: bold;">${resident.depto}</span><br>
-                                COPROPIETARIO: <span style="font-weight: bold;">${resident.name.toUpperCase()}</span>
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr style="background-color: #f2f2f2;">
-                            <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">TOTAL A PAGAR</th>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">Saldo Anterior</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">Mora (1.5%)</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">Saldo a favor</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-${formatCurrency(creditAppliedToThisBill)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PAGADO ESTE MES</strong>
-                                <br>${formatCurrency(paidThisMonth)}
-                            </td>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
-                                <strong>TOTAL A PAGAR</strong>
-                                <br><span style="font-size: 14px; font-weight: bold;">${formatCurrency(finalAmount)}</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
-                                CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
-                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            `;
-            const options = {
-                margin: 10,
-                filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
-                image: {
-                    type: 'jpeg',
-                    quality: 0.98
-                },
-                html2canvas: {
-                    scale: 2
-                },
-                jsPDF: {
-                    unit: 'mm',
-                    format: 'a4',
-                    orientation: 'portrait'
-                }
-            };
-            html2pdf().from(receiptContent).set(options).save();
-        } catch (err) {
-            console.error("Error generating PDF:", err);
-            alert('Error al generar el recibo.');
-        } finally {
-            hideSpinner();
-        }
-    }
-});
-
-async function showEditBillModal(billId) {
-    showSpinner();
-    try {
-        const billDoc = await db.collection('bills').doc(billId).get();
-        const bill = billDoc.data();
-        editBillForm['edit-bill-id'].value = billId;
-
-        // Corrección de la fecha:
-        const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-        if (dueDate) {
-            const localDueDate = new Date(dueDate.getTime() - dueDate.getTimezoneOffset() * 60000);
-            editBillForm['edit-bill-due-date'].value = localDueDate.toISOString().slice(0, 10);
-        } else {
-            editBillForm['edit-bill-due-date'].value = '';
-        }
-
-        editBillForm['edit-bill-amount'].value = bill.amount;
-        editBillForm['edit-bill-concept'].value = bill.concept;
-        editBillForm['edit-bill-status'].value = bill.status;
-
-        // Nuevo campo en el modal
-        editBillForm['edit-bill-paid-amount'].value = bill.paidAmount || '';
-
-        // Corrección de la fecha de pago:
-        const paymentDate = bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000) : null;
-        if (paymentDate) {
-            const localPaymentDate = new Date(paymentDate.getTime() - paymentDate.getTimezoneOffset() * 60000);
-            editBillForm['edit-bill-payment-date'].value = localPaymentDate.toISOString().slice(0, 10);
-        } else {
-            editBillForm['edit-bill-payment-date'].value = '';
-        }
-
-        billHistoryModal.classList.remove('active');
-        editBillModal.classList.add('active');
-    } catch (err) {
-        console.error("Error loading bill for edit:", err);
-        alert('Error al cargar los datos de la factura.');
-    } finally {
-        hideSpinner();
-    }
-}
-
-editBillForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const billId = editBillForm['edit-bill-id'].value;
-    const dueDate = editBillForm['edit-bill-due-date'].value;
-    const amount = parseFloat(editBillForm['edit-bill-amount'].value);
-    const concept = editBillForm['edit-bill-concept'].value;
-    const status = editBillForm['edit-bill-status'].value;
-    const paymentDate = editBillForm['edit-bill-payment-date'].value;
-    const paidAmount = parseCurrency(editBillForm['edit-bill-paid-amount'].value) || 0;
-
-    showSpinner();
-    try {
-        const billDoc = await db.collection('bills').doc(billId).get();
-        const originalBill = billDoc.data();
-        const residentId = originalBill.residentId;
-        
-        let newCredit = 0;
-        let originalCredit = 0;
-
-        await db.runTransaction(async (transaction) => {
-            const residentDoc = await transaction.get(db.collection('residents').doc(residentId));
-            originalCredit = residentDoc.data().currentCredit || 0;
-
-            const oldBillPaidAmount = originalBill.paidAmount || 0;
-            const oldBillAmount = originalBill.amount || 0;
-            
-            // Revertir el crédito de la transacción anterior si la factura ya estaba "Pagada"
-            if (originalBill.status === 'Pagada' && oldBillPaidAmount > oldBillAmount) {
-                const creditToRevert = oldBillPaidAmount - oldBillAmount;
-                newCredit = originalCredit - creditToRevert;
-            } else {
-                newCredit = originalCredit;
-            }
-
-            // Aplicar el nuevo crédito si la factura se marca como "Pagada"
-            if (status === 'Pagada' && paidAmount > amount) {
-                const newCreditToAdd = paidAmount - amount;
-                newCredit += newCreditToAdd;
-            }
-            
-            transaction.update(db.collection('residents').doc(residentId), {
-                currentCredit: newCredit
-            });
-        });
-
-        const localDueDate = new Date(dueDate);
-        const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
-
-        await db.collection('bills').doc(billId).update({
-            dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
-            amount,
-            concept,
-            status,
-            paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
-            paidAmount
-        });
-
-        alert('Factura actualizada y saldo a favor ajustado.');
-
-        editBillModal.classList.remove('active');
-        showBillHistory(currentResidentId);
-    } catch (err) {
-        console.error("Error updating bill:", err);
-        alert('Error al actualizar factura.');
-    } finally {
-        hideSpinner();
-    }
-});
-
-
-// --- Solución del Cierre de Modales: Delegación de Eventos ---
-// Un solo listener que maneja todos los cierres y cancelaciones.
-document.body.addEventListener('click', (e) => {
-    // Cierra cualquier modal si el clic fue en un botón con la clase .close-btn
-    const closeBtn = e.target.closest('.close-btn');
-    if (closeBtn) {
-        const modal = closeBtn.closest('.modal');
-        if (modal) {
-            modal.classList.remove('active');
-            // Si el modal de edición se cierra, muestra el de historial nuevamente
-            if (modal.id === 'edit-bill-modal' && currentResidentId) {
-                showBillHistory(currentResidentId);
-            }
-        }
-    }
-});
-
-// FIX: Event listener para el formulario de cambio de credenciales
-changeCredentialsFormInner.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const oldUsername = changeCredentialsFormInner['old-username'].value;
-    const oldPassword = changeCredentialsFormInner['old-password'].value;
-    const newUsername = changeCredentialsFormInner['new-username'].value;
-    const newPassword = changeCredentialsFormInner['new-password'].value;
-
-    credentialsError.textContent = '';
-    credentialsSuccess.textContent = '';
-
-    if (!oldUsername || !oldPassword || !newUsername || !newPassword) {
-        credentialsError.textContent = 'Por favor, completa todos los campos.';
-        return;
-    }
-
-    if (newPassword === oldPassword) {
-        credentialsError.textContent = 'La nueva contraseña debe ser diferente a la actual.';
-        return;
-    }
-
-    showSpinner();
-    try {
-        const residentDoc = await db.collection('residents').doc(currentResidentId).get();
-        if (!residentDoc.exists) {
-            credentialsError.textContent = 'Error: Residente no encontrado.';
-            hideSpinner();
-            return;
-        }
-
-        const resident = residentDoc.data();
-        if (resident.username === oldUsername && resident.password === oldPassword) {
-            await db.collection('residents').doc(currentResidentId).update({
-                username: newUsername,
-                password: newPassword,
-                credentialsChanged: true
-            });
-            credentialsSuccess.textContent = 'Credenciales actualizadas exitosamente.';
-            changeCredentialsFormInner.reset();
-        } else {
-            credentialsError.textContent = 'Usuario o contraseña actuales incorrectos.';
-        }
-    } catch (err) {
-        console.error("Error updating credentials:", err);
-        credentialsError.textContent = 'Error al actualizar credenciales. Intenta de nuevo.';
-    } finally {
-        hideSpinner();
-    }
-});
-
-// --- Resident Panel Functions ---
-
-async function loadResidentBills(residentId) {
-    showSpinner();
-    residentBillsTableBody.innerHTML = '';
-    try {
-        const residentDoc = await db.collection('residents').doc(residentId).get();
-        currentResident = residentDoc.data();
-        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
-
-        if (billsSnapshot.empty) {
-            residentBillsTableBody.innerHTML = `<tr><td colspan="6">No se encontraron facturas.</td></tr>`;
-        } else {
-            const bills = billsSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
+            const allBills = allBillsSnapshot.docs.map(doc => ({
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.seconds || 0
             }));
-            bills.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            allBills.sort((a, b) => a.createdAt - b.createdAt);
 
-            let currentCredit = currentResident.currentCredit || 0;
-
-            bills.forEach(bill => {
-                let amountToPay = bill.amount;
-                let appliedCredit = 0;
-
-                if (currentCredit > 0 && bill.status === 'Pendiente') {
-                    appliedCredit = Math.min(amountToPay, currentCredit);
-                    amountToPay -= appliedCredit;
-                    currentCredit -= appliedCredit;
-                }
-
-                const today = new Date();
-                const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-                if (dueDate) {
-                    dueDate.setHours(0, 0, 0, 0);
-                }
-                const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
-
-                const row = residentBillsTableBody.insertRow();
-                row.dataset.id = bill.id;
-                row.innerHTML = `
-                    <td>${bill.concept}</td>
-                    <td>${formatCurrency(bill.amount)}</td>
-                    <td>${formatCurrency(appliedCredit)}</td>
-                    <td>${formatCurrency(amountToPay)}</td>
-                    <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
-                    <td>
-                        <button class="btn primary-btn download-receipt-btn" data-id="${bill.id}">
-                            <i class="fas fa-file-download"></i> Descargar Recibo
-                        </button>
-                    </td>
-                `;
-            });
-        }
-    } catch (err) {
-        console.error("Error loading resident bills:", err);
-        alert('Error al cargar sus facturas.');
-    } finally {
-        hideSpinner();
-    }
-}
-
-// Download receipt as PDF
-residentBillsTableBody.addEventListener('click', async (e) => {
-    const downloadBtn = e.target.closest('.download-receipt-btn');
-    if (downloadBtn) {
-        const billId = downloadBtn.dataset.id;
-        showSpinner();
-        try {
-            const billDoc = await db.collection('bills').doc(billId).get();
-            const bill = billDoc.data();
-            const residentDoc = await db.collection('residents').doc(bill.residentId).get();
-            const resident = residentDoc.data();
-
-            let previousBalance = 0;
-            const allBillsSnapshot = await db.collection('bills')
-                .where('residentId', '==', bill.residentId)
-                .orderBy('createdAt')
-                .get();
-            
-            let foundCurrentBill = false;
-            allBillsSnapshot.forEach(doc => {
-                if (doc.id === billId) {
-                    foundCurrentBill = true;
-                }
-                if (!foundCurrentBill && doc.data().status === 'Pendiente') {
-                    const prevBill = doc.data();
-                    const prevDueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
-                    const isLate = prevDueDate && new Date() > prevDueDate;
-                    const prevMulta = isLate ? prevBill.amount * 0.015 : 0;
-                    previousBalance += prevBill.amount + prevMulta;
+            allBills.forEach(prevBill => {
+                if (prevBill.createdAt < bill.createdAt.seconds) {
+                    if (prevBill.status === 'Pendiente') {
+                        previousBalance += prevBill.amount;
+                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
+                        const credit = prevBill.paidAmount - prevBill.amount;
+                        if (credit > 0) {
+                            accumulatedCredit += credit;
+                        }
+                    }
                 }
             });
 
+            // FIX: Lógica de cálculo corregida para el PDF
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate);
-            const multa = isLate ? bill.amount * 0.015 : 0;
-
-            const totalDueBeforeCredit = previousBalance + bill.amount + multa;
-            const currentCredit = resident.currentCredit || 0;
-            let creditAppliedToThisBill = 0;
-
-            if (totalDueBeforeCredit > 0 && currentCredit > 0) {
-              creditAppliedToThisBill = Math.min(totalDueBeforeCredit, currentCredit);
+            if (dueDate) {
+                dueDate.setHours(0, 0, 0, 0);
             }
 
-            let finalAmount = totalDueBeforeCredit - creditAppliedToThisBill;
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
+                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+
+            const multa = isLate ? bill.amount * 0.015 : 0;
+            const totalDue = bill.amount + previousBalance + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            // Lógica corregida: Si la factura está pagada, el total a pagar es 0
-            if (bill.status === 'Pagada' && paidThisMonth >= bill.amount) {
+            let finalAmount = totalDue - paidThisMonth;
+            let currentCredit = 0;
+
+            if (finalAmount < 0) {
+                currentCredit = Math.abs(finalAmount);
                 finalAmount = 0;
             }
+
+            let saldoAFavorFinal = accumulatedCredit + currentCredit;
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -1055,30 +619,24 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                             <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">TOTAL A PAGAR</th>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">Saldo Anterior</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">Mora (1.5%)</td>
+                            <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">Saldo a favor</td>
+                            <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-${formatCurrency(creditAppliedToThisBill)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
@@ -1182,39 +740,6 @@ editBillForm.addEventListener('submit', async (e) => {
 
     showSpinner();
     try {
-        const billDoc = await db.collection('bills').doc(billId).get();
-        const originalBill = billDoc.data();
-        const residentId = originalBill.residentId;
-        
-        let newCredit = 0;
-        let originalCredit = 0;
-
-        await db.runTransaction(async (transaction) => {
-            const residentDoc = await transaction.get(db.collection('residents').doc(residentId));
-            originalCredit = residentDoc.data().currentCredit || 0;
-
-            const oldBillPaidAmount = originalBill.paidAmount || 0;
-            const oldBillAmount = originalBill.amount || 0;
-            
-            // Revertir el crédito de la transacción anterior si la factura ya estaba "Pagada"
-            if (originalBill.status === 'Pagada' && oldBillPaidAmount > oldBillAmount) {
-                const creditToRevert = oldBillPaidAmount - oldBillAmount;
-                newCredit = originalCredit - creditToRevert;
-            } else {
-                newCredit = originalCredit;
-            }
-
-            // Aplicar el nuevo crédito si la factura se marca como "Pagada"
-            if (status === 'Pagada' && paidAmount > amount) {
-                const newCreditToAdd = paidAmount - amount;
-                newCredit += newCreditToAdd;
-            }
-            
-            transaction.update(db.collection('residents').doc(residentId), {
-                currentCredit: newCredit
-            });
-        });
-
         const localDueDate = new Date(dueDate);
         const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
 
@@ -1224,13 +749,10 @@ editBillForm.addEventListener('submit', async (e) => {
             concept,
             status,
             paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
-            paidAmount
+            paidAmount: paidAmount // Nuevo campo
         });
-
-        alert('Factura actualizada y saldo a favor ajustado.');
-
+        alert('Factura actualizada exitosamente.');
         editBillModal.classList.remove('active');
-        showBillHistory(currentResidentId);
     } catch (err) {
         console.error("Error updating bill:", err);
         alert('Error al actualizar factura.');
@@ -1313,32 +835,14 @@ async function loadResidentBills(residentId) {
     showSpinner();
     residentBillsTableBody.innerHTML = '';
     try {
-        const residentDoc = await db.collection('residents').doc(residentId).get();
-        currentResident = residentDoc.data();
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
-
         if (billsSnapshot.empty) {
-            residentBillsTableBody.innerHTML = `<tr><td colspan="6">No se encontraron facturas.</td></tr>`;
+            residentBillsTableBody.innerHTML = `<tr><td colspan="5">No se encontraron facturas pendientes.</td></tr>`;
         } else {
-            const bills = billsSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            bills.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-
-            let currentCredit = currentResident.currentCredit || 0;
-
-            bills.forEach(bill => {
-                let amountToPay = bill.amount;
-                let appliedCredit = 0;
-
-                if (currentCredit > 0 && bill.status === 'Pendiente') {
-                    appliedCredit = Math.min(amountToPay, currentCredit);
-                    amountToPay -= appliedCredit;
-                    currentCredit -= appliedCredit;
-                }
-
+            billsSnapshot.forEach(doc => {
+                const bill = doc.data();
                 const today = new Date();
+                // Normaliza la fecha de vencimiento a solo día, mes y año
                 const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
                 if (dueDate) {
                     dueDate.setHours(0, 0, 0, 0);
@@ -1346,15 +850,17 @@ async function loadResidentBills(residentId) {
                 const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
 
                 const row = residentBillsTableBody.insertRow();
-                row.dataset.id = bill.id;
+                row.dataset.id = doc.id;
+                // FIX: Agregadas las columnas de monto y fecha de pago para igualar la vista de admin
                 row.innerHTML = `
                     <td>${bill.concept}</td>
                     <td>${formatCurrency(bill.amount)}</td>
-                    <td>${formatCurrency(appliedCredit)}</td>
-                    <td>${formatCurrency(amountToPay)}</td>
+                    <td>${formatCurrency(bill.paidAmount || 0)}</td>
+                    <td>${formatDate(bill.dueDate)}</td>
+                    <td>${formatDate(bill.paymentDate)}</td>
                     <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
                     <td>
-                        <button class="btn primary-btn download-receipt-btn" data-id="${bill.id}">
+                        <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
                             <i class="fas fa-file-download"></i> Descargar Recibo
                         </button>
                     </td>
@@ -1382,44 +888,54 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
+            let accumulatedCredit = 0;
+
+            // FIX: Removida la cláusula orderBy y se ordenará en el cliente para evitar el error de índice
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
-                .orderBy('createdAt')
                 .get();
-            
-            let foundCurrentBill = false;
-            allBillsSnapshot.forEach(doc => {
-                if (doc.id === billId) {
-                    foundCurrentBill = true;
-                }
-                if (!foundCurrentBill && doc.data().status === 'Pendiente') {
-                    const prevBill = doc.data();
-                    const prevDueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
-                    const isLate = prevDueDate && new Date() > prevDueDate;
-                    const prevMulta = isLate ? prevBill.amount * 0.015 : 0;
-                    previousBalance += prevBill.amount + prevMulta;
+
+            const allBills = allBillsSnapshot.docs.map(doc => ({
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.seconds || 0
+            }));
+            allBills.sort((a, b) => a.createdAt - b.createdAt);
+
+            allBills.forEach(prevBill => {
+                if (prevBill.createdAt < bill.createdAt.seconds) {
+                    if (prevBill.status === 'Pendiente') {
+                        previousBalance += prevBill.amount;
+                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
+                        const credit = prevBill.paidAmount - prevBill.amount;
+                        if (credit > 0) {
+                            accumulatedCredit += credit;
+                        }
+                    }
                 }
             });
 
+            // FIX: Lógica de cálculo corregida para el PDF
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate);
-            const multa = isLate ? bill.amount * 0.015 : 0;
-
-            const totalDueBeforeCredit = previousBalance + bill.amount + multa;
-            const currentCredit = resident.currentCredit || 0;
-            let creditAppliedToThisBill = 0;
-
-            if (totalDueBeforeCredit > 0 && currentCredit > 0) {
-              creditAppliedToThisBill = Math.min(totalDueBeforeCredit, currentCredit);
+            if (dueDate) {
+                dueDate.setHours(0, 0, 0, 0);
             }
 
-            let finalAmount = totalDueBeforeCredit - creditAppliedToThisBill;
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
+                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+
+            const multa = isLate ? bill.amount * 0.015 : 0;
+            const totalDue = bill.amount + previousBalance + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            // Lógica corregida: Si la factura está pagada, el total a pagar es 0
-            if (bill.status === 'Pagada' && paidThisMonth >= bill.amount) {
+            let finalAmount = totalDue - paidThisMonth;
+            let currentCredit = 0;
+
+            if (finalAmount < 0) {
+                currentCredit = Math.abs(finalAmount);
                 finalAmount = 0;
             }
+
+            let saldoAFavorFinal = accumulatedCredit + currentCredit;
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -1433,7 +949,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                                 </div>
                             </td>
                             <td style="border: 1px solid #000; padding: 10px; text-align: right;">
-                                <img src="logo bahia a.png" alt="Logo" style="max-height: 50px;">
+                                <img src="logo.png" alt="Logo" style="max-height: 50px;">
                             </td>
                         </tr>
                     </table>
@@ -1466,30 +982,24 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                             <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">TOTAL A PAGAR</th>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">Saldo Anterior</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">Mora (1.5%)</td>
+                            <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">Saldo a favor</td>
+                            <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-${formatCurrency(creditAppliedToThisBill)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
