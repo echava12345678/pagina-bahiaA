@@ -83,7 +83,9 @@ function toggleSection(sectionIdToShow) {
 function formatDate(timestamp) {
     if (!timestamp || !timestamp.seconds) return '';
     const date = new Date(timestamp.seconds * 1000);
-    return date.toLocaleDateString('es-CO');
+    // Para que muestre la fecha local correcta
+    const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+    return localDate.toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
 function parseCurrency(value) {
@@ -289,13 +291,16 @@ billForm.addEventListener('submit', async (e) => {
 
     showSpinner();
     try {
+        const localDueDate = new Date(dueDate);
+        const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
+        
         await db.collection('bills').add({
             residentId,
-            dueDate: firebase.firestore.Timestamp.fromDate(new Date(dueDate)),
+            dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
             amount,
             concept,
             status,
-            paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(new Date(paymentDate)) : null,
+            paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         alert('Factura agregada exitosamente.');
@@ -475,12 +480,10 @@ billHistoryModal.addEventListener('click', async (e) => {
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
                            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             
-            // --- INICIO: Lógica Corregida ---
             const currentAmountToPay = bill.status === 'Pendiente' ? bill.amount : 0;
             const multa = isLate ? bill.amount * 0.10 : 0;
             const finalAmount = currentAmountToPay + previousBalance + multa;
             const paidThisMonth = bill.status === 'Pagada' ? bill.amount : 0;
-            // --- FIN: Lógica Corregida ---
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -585,11 +588,28 @@ async function showEditBillModal(billId) {
         const billDoc = await db.collection('bills').doc(billId).get();
         const bill = billDoc.data();
         editBillForm['edit-bill-id'].value = billId;
-        editBillForm['edit-bill-due-date'].value = bill.dueDate ? new Date(bill.dueDate.seconds * 1000).toISOString().slice(0, 10) : '';
+        
+        // Corrección de la fecha:
+        const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
+        if (dueDate) {
+            const localDueDate = new Date(dueDate.getTime() - dueDate.getTimezoneOffset() * 60000);
+            editBillForm['edit-bill-due-date'].value = localDueDate.toISOString().slice(0, 10);
+        } else {
+            editBillForm['edit-bill-due-date'].value = '';
+        }
+        
         editBillForm['edit-bill-amount'].value = bill.amount;
         editBillForm['edit-bill-concept'].value = bill.concept;
         editBillForm['edit-bill-status'].value = bill.status;
-        editBillForm['edit-bill-payment-date'].value = bill.status === 'Pagada' && bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000).toISOString().slice(0, 10) : '';
+
+        // Corrección de la fecha de pago:
+        const paymentDate = bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000) : null;
+        if (paymentDate) {
+            const localPaymentDate = new Date(paymentDate.getTime() - paymentDate.getTimezoneOffset() * 60000);
+            editBillForm['edit-bill-payment-date'].value = localPaymentDate.toISOString().slice(0, 10);
+        } else {
+            editBillForm['edit-bill-payment-date'].value = '';
+        }
         
         billHistoryModal.classList.remove('active');
         editBillModal.classList.add('active');
@@ -612,12 +632,15 @@ editBillForm.addEventListener('submit', async (e) => {
 
     showSpinner();
     try {
+        const localDueDate = new Date(dueDate);
+        const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
+        
         await db.collection('bills').doc(billId).update({
-            dueDate: firebase.firestore.Timestamp.fromDate(new Date(dueDate)),
+            dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
             amount,
             concept,
             status,
-            paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(new Date(paymentDate)) : null,
+            paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
         });
         alert('Factura actualizada exitosamente.');
         editBillModal.classList.remove('active');
@@ -722,12 +745,10 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
                            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             
-            // --- INICIO: Lógica Corregida ---
             const currentAmountToPay = bill.status === 'Pendiente' ? bill.amount : 0;
             const multa = isLate ? bill.amount * 0.10 : 0;
             const finalAmount = currentAmountToPay + previousBalance + multa;
             const paidThisMonth = bill.status === 'Pagada' ? bill.amount : 0;
-            // --- FIN: Lógica Corregida ---
             
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
