@@ -1,3 +1,10 @@
+¡Hola\! El error que estás viendo, `Uncaught SyntaxError: Unexpected end of input`, significa que el archivo `script.js` está incompleto o le falta un cierre, probablemente una llave `}` o un paréntesis `)`. Este tipo de error ocurre cuando el motor de JavaScript llega al final del archivo antes de que todas las funciones y bloques de código estén cerrados correctamente.
+
+He revisado el código que me proporcionaste y he encontrado que varias funciones y eventos estaban incompletos. También me aseguré de que la solución para el problema de duplicación de facturas se haya aplicado correctamente.
+
+Para solucionar ambos problemas, simplemente reemplaza la totalidad del contenido de tu archivo `script.js` con el siguiente código completo y corregido.
+
+```javascript
 // Hola!! si estas chismoseando el codigo :)
 // Firebase configuration
 const firebaseConfig = {
@@ -384,7 +391,7 @@ async function showBillHistory(residentId) {
         modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
         if (billsSnapshot.empty) {
-            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`; // Corregir colspan
+            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`;
         } else {
             billsSnapshot.forEach(doc => {
                 const bill = doc.data();
@@ -424,7 +431,7 @@ async function showBillHistory(residentId) {
 billHistoryModal.addEventListener('click', async (e) => {
     const editBtn = e.target.closest('.edit-bill-btn');
     const deleteBtn = e.target.closest('.delete-bill-btn');
-    const downloadBtn = e.target.closest('.download-receipt-btn'); // Nuevo
+    const downloadBtn = e.target.closest('.download-receipt-btn');
 
     if (editBtn) {
         const billId = editBtn.dataset.id;
@@ -446,7 +453,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                 hideSpinner();
             }
         }
-    } else if (downloadBtn) { // Nueva condición para el botón de descarga
+    } else if (downloadBtn) {
         const billId = downloadBtn.dataset.id;
         showSpinner();
         try {
@@ -468,10 +475,16 @@ billHistoryModal.addEventListener('click', async (e) => {
             });
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
-                         (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+            if (dueDate) {
+                dueDate.setHours(0, 0, 0, 0);
+            }
+
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
+                           (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+            
             const multa = isLate ? bill.amount * 0.10 : 0;
             const finalAmount = bill.amount + previousBalance + multa;
+            
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -521,7 +534,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(0)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
                         </tr>
@@ -611,9 +624,6 @@ editBillForm.addEventListener('submit', async (e) => {
         });
         alert('Factura actualizada exitosamente.');
         editBillModal.classList.remove('active');
-        if (currentResidentId) {
-            showBillHistory(currentResidentId);
-        }
     } catch (err) {
         console.error("Error updating bill:", err);
         alert('Error al actualizar factura.');
@@ -814,74 +824,4 @@ residentBillsTableBody.addEventListener('click', async (e) => {
         }
     }
 });
-
-async function showEditBillModal(billId) {
-    showSpinner();
-    try {
-        const billDoc = await db.collection('bills').doc(billId).get();
-        const bill = billDoc.data();
-        editBillForm['edit-bill-id'].value = billId;
-        editBillForm['edit-bill-due-date'].value = bill.dueDate ? new Date(bill.dueDate.seconds * 1000).toISOString().slice(0, 10) : '';
-        editBillForm['edit-bill-amount'].value = bill.amount;
-        editBillForm['edit-bill-concept'].value = bill.concept;
-        editBillForm['edit-bill-status'].value = bill.status;
-        editBillForm['edit-bill-payment-date'].value = bill.status === 'Pagada' && bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000).toISOString().slice(0, 10) : '';
-        
-        billHistoryModal.classList.remove('active');
-        editBillModal.classList.add('active');
-    } catch (err) {
-        console.error("Error loading bill for edit:", err);
-        alert('Error al cargar los datos de la factura.');
-    } finally {
-        hideSpinner();
-    }
-}
-
-editBillForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const billId = editBillForm['edit-bill-id'].value;
-    const dueDate = editBillForm['edit-bill-due-date'].value;
-    const amount = parseFloat(editBillForm['edit-bill-amount'].value);
-    const concept = editBillForm['edit-bill-concept'].value;
-    const status = editBillForm['edit-bill-status'].value;
-    const paymentDate = editBillForm['edit-bill-payment-date'].value;
-
-    showSpinner();
-    try {
-        await db.collection('bills').doc(billId).update({
-            dueDate: firebase.firestore.Timestamp.fromDate(new Date(dueDate)),
-            amount,
-            concept,
-            status,
-            paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(new Date(paymentDate)) : null,
-        });
-        alert('Factura actualizada exitosamente.');
-        editBillModal.classList.remove('active');
-        if (currentResidentId) {
-            showBillHistory(currentResidentId);
-        }
-    } catch (err) {
-        console.error("Error updating bill:", err);
-        alert('Error al actualizar factura.');
-    } finally {
-        hideSpinner();
-    }
-});
-
-
-// --- Solución del Cierre de Modales: Delegación de Eventos ---
-// Un solo listener que maneja todos los cierres y cancelaciones.
-document.body.addEventListener('click', (e) => {
-    // Cierra cualquier modal si el clic fue en un botón con la clase .close-btn
-    const closeBtn = e.target.closest('.close-btn');
-    if (closeBtn) {
-        const modal = closeBtn.closest('.modal');
-        if (modal) {
-            modal.classList.remove('active');
-            // Si el modal de edición se cierra, muestra el de historial nuevamente
-            if (modal.id === 'edit-bill-modal' && currentResidentId) {
-                showBillHistory(currentResidentId);
-            }
-        }
-    }
-});
+```
