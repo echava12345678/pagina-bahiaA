@@ -560,9 +560,6 @@ billHistoryModal.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
-            let currentCredit = resident.currentCredit || 0;
-            let appliedCredit = 0;
-
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
                 .get();
@@ -574,7 +571,7 @@ billHistoryModal.addEventListener('click', async (e) => {
             }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
-            // Calculate previous balance (amount + multa) and apply credit
+            // Calculate previous balance (amount + multa)
             let foundCurrentBill = false;
             for (const prevBill of allBills) {
                 if (prevBill.id === billId) {
@@ -586,11 +583,6 @@ billHistoryModal.addEventListener('click', async (e) => {
                         const isLate = prevDueDate && new Date() > prevDueDate;
                         const prevMulta = isLate ? prevBill.amount * 0.015 : 0;
                         previousBalance += prevBill.amount + prevMulta;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            currentCredit += credit;
-                        }
                     }
                 } else {
                     break;
@@ -601,11 +593,12 @@ billHistoryModal.addEventListener('click', async (e) => {
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate);
             const multa = isLate ? bill.amount * 0.015 : 0;
-            
-            // Apply credit to the total amount
+
             let totalToPay = previousBalance + bill.amount + multa;
             let finalAmount = totalToPay;
+            const currentCredit = resident.currentCredit || 0;
             let currentCreditUsed = 0;
+
             if (currentCredit > 0) {
               currentCreditUsed = Math.min(totalToPay, currentCredit);
               finalAmount = totalToPay - currentCreditUsed;
@@ -681,7 +674,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCreditUsed)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-${formatCurrency(currentCreditUsed)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
@@ -973,9 +966,6 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
-            let currentCredit = resident.currentCredit || 0;
-            let appliedCredit = 0;
-
             const allBillsSnapshot = await db.collection('bills')
                 .where('residentId', '==', bill.residentId)
                 .get();
@@ -987,7 +977,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
-            // Calculate previous balance (amount + multa) and apply credit
+            // Calculate previous balance (amount + multa)
             let foundCurrentBill = false;
             for (const prevBill of allBills) {
                 if (prevBill.id === billId) {
@@ -999,11 +989,6 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         const isLate = prevDueDate && new Date() > prevDueDate;
                         const prevMulta = isLate ? prevBill.amount * 0.015 : 0;
                         previousBalance += prevBill.amount + prevMulta;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            currentCredit += credit;
-                        }
                     }
                 } else {
                     break;
@@ -1014,11 +999,12 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate);
             const multa = isLate ? bill.amount * 0.015 : 0;
-            
-            // Apply credit to the total amount
+
             let totalToPay = previousBalance + bill.amount + multa;
             let finalAmount = totalToPay;
+            const currentCredit = resident.currentCredit || 0;
             let currentCreditUsed = 0;
+
             if (currentCredit > 0) {
               currentCreditUsed = Math.min(totalToPay, currentCredit);
               finalAmount = totalToPay - currentCreditUsed;
@@ -1094,7 +1080,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCreditUsed)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-${formatCurrency(currentCreditUsed)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
