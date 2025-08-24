@@ -159,8 +159,11 @@
                     </div>
                 </section>
                 
-                <section class="admin-section">
+                <section class="admin-section" id="bill-list-section">
                     <h2 class="section-title"><i class="fas fa-list-alt"></i> Facturas y Residentes</h2>
+                    <div class="action-buttons">
+                        <button id="show-admin-payments-btn" class="btn primary-btn"><i class="fas fa-history"></i> Ver Historial de Pagos</button>
+                    </div>
                     <div class="table-container">
                         <input type="text" id="resident-search" class="search-input" placeholder="Buscar por ID, nombre o departamento...">
                         <table id="residents-table">
@@ -170,9 +173,28 @@
                                     <th>Nombre</th>
                                     <th>Departamento</th>
                                     <th>Usuario</th>
-<!--                                     <th>Saldo a favor</th> -->
                                     <th>Acciones</th>
                                     <th>Descarga los recibos en "Ver facturas"</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="admin-section hidden" id="admin-payments-section">
+                    <h2 class="section-title"><i class="fas fa-history"></i> Historial de Pagos</h2>
+                    <div class="table-container">
+                        <table id="admin-payments-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Departamento</th>
+                                    <th>Concepto</th>
+                                    <th>Monto Factura</th>
+                                    <th>Monto Pagado</th>
+                                    <th>Fecha de Pago</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -191,7 +213,6 @@
                                     <tr>
                                         <th>Fecha Venc.</th>
                                         <th>Monto</th>
-<!--                                         <th>Saldo a favor</th> -->
                                         <th>Valor pagado</th>
                                         <th>Concepto</th>
                                         <th>Estado</th>
@@ -269,8 +290,11 @@
         </header>
 
         <div class="panel-container">
+            <div class="action-buttons">
+                 <button id="show-resident-payments-btn" class="btn primary-btn"><i class="fas fa-history"></i> Ver Historial de Pagos</button>
+            </div>
             <section class="resident-section">
-                <h2 class="section-title"><i class="fas fa-file-invoice"></i> Mis Facturas</h2>
+                <h2 class="section-title"><i class="fas fa-file-invoice"></i> Mis Facturas Pendientes</h2>
                 <div class="table-container">
                     <table id="resident-bills-table">
                         <thead>
@@ -279,8 +303,8 @@
                                 <th>Monto</th>
                                 <th>Monto recibido</th>
                                 <th>Fecha Vencimiento</th>
-                                <th>Estado</th>
                                 <th>Fecha de pago</th>
+                                <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -289,6 +313,27 @@
                     </table>
                 </div>
             </section>
+            
+            <section class="resident-section hidden" id="resident-payments-section">
+                <h2 class="section-title"><i class="fas fa-history"></i> Historial de Pagos</h2>
+                <div class="table-container">
+                    <table id="resident-payments-table">
+                        <thead>
+                            <tr>
+                                <th>Concepto</th>
+                                <th>Monto Factura</th>
+                                <th>Monto Pagado</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Fecha de Pago</th>
+                                <th>Descargar Recibo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <section class="resident-section">
                 <h2 class="section-title"><i class="fas fa-key"></i> Gestionar Credenciales</h2>
                 <button id="show-change-password-form" class="btn primary-btn"><i class="fas fa-edit"></i> Cambiar Usuario y Contraseña</button>
