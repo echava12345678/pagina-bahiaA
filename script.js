@@ -1,10 +1,3 @@
-¡Hola\! El error que estás viendo, `Uncaught SyntaxError: Unexpected end of input`, significa que el archivo `script.js` está incompleto o le falta un cierre, probablemente una llave `}` o un paréntesis `)`. Este tipo de error ocurre cuando el motor de JavaScript llega al final del archivo antes de que todas las funciones y bloques de código estén cerrados correctamente.
-
-He revisado el código que me proporcionaste y he encontrado que varias funciones y eventos estaban incompletos. También me aseguré de que la solución para el problema de duplicación de facturas se haya aplicado correctamente.
-
-Para solucionar ambos problemas, simplemente reemplaza la totalidad del contenido de tu archivo `script.js` con el siguiente código completo y corregido.
-
-```javascript
 // Hola!! si estas chismoseando el codigo :)
 // Firebase configuration
 const firebaseConfig = {
@@ -824,4 +817,3 @@ residentBillsTableBody.addEventListener('click', async (e) => {
         }
     }
 });
-```
