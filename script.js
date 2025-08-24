@@ -504,7 +504,7 @@ billHistoryModal.addEventListener('click', async (e) => {
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
                            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             
-            const multa = isLate ? bill.amount * 0.10 : 0;
+            const multa = isLate ? bill.amount * 0.015 : 0;
             const totalDue = bill.amount + previousBalance + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
@@ -799,7 +799,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
                            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             
-            const multa = isLate ? bill.amount * 0.10 : 0;
+            const multa = isLate ? bill.amount * 0.015 : 0;
             const totalDue = bill.amount + previousBalance + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
