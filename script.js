@@ -694,10 +694,13 @@ async function showEditBillModal(billId) {
         editBillForm['edit-bill-id'].value = billId;
 
         // Corrección de la fecha:
-        const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-        if (dueDate) {
-            const localDueDate = new Date(dueDate.getTime() - dueDate.getTimezoneOffset() * 60000);
-            editBillForm['edit-bill-due-date'].value = localDueDate.toISOString().slice(0, 10);
+          const dueDateTimestamp = bill.dueDate;
+        if (dueDateTimestamp) {
+            const date = new Date(dueDateTimestamp.seconds * 1000);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            editBillForm['edit-bill-due-date'].value = `${year}-${month}-${day}`;
         } else {
             editBillForm['edit-bill-due-date'].value = '';
         }
@@ -710,13 +713,17 @@ async function showEditBillModal(billId) {
         editBillForm['edit-bill-paid-amount'].value = bill.paidAmount || '';
 
         // Corrección de la fecha de pago:
-        const paymentDate = bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000) : null;
-        if (paymentDate) {
-            const localPaymentDate = new Date(paymentDate.getTime() - paymentDate.getTimezoneOffset() * 60000);
-            editBillForm['edit-bill-payment-date'].value = localPaymentDate.toISOString().slice(0, 10);
+        const paymentDateTimestamp = bill.paymentDate;
+        if (paymentDateTimestamp) {
+            const date = new Date(paymentDateTimestamp.seconds * 1000);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            editBillForm['edit-bill-payment-date'].value = `${year}-${month}-${day}`;
         } else {
             editBillForm['edit-bill-payment-date'].value = '';
         }
+
 
         billHistoryModal.classList.remove('active');
         editBillModal.classList.add('active');
