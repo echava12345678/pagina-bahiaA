@@ -96,7 +96,12 @@ function parseCurrency(value) {
 
 function formatCurrency(value) {
     if (typeof value !== 'number' || isNaN(value)) return '$0';
-    return '$' + value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return value.toLocaleString('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    });
 }
 
 // --- Login & Authentication ---
@@ -313,7 +318,7 @@ billForm.addEventListener('submit', async (e) => {
         alert('Error al agregar factura.');
     } finally {
         hideSpinner();
-        toggleSection(null);
+        toggleSection(null); // Ocultar todos los formularios
     }
 });
 
