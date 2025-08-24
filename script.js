@@ -456,7 +456,7 @@ billHistoryModal.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
-            // CORRECCIÓN FINAL: Se valida que dueDate sea un objeto de Timestamp válido
+            // Se valida que dueDate sea un objeto de Timestamp válido
             if (bill.dueDate && bill.dueDate instanceof firebase.firestore.Timestamp) {
                 const previousBillsSnapshot = await db.collection('bills')
                     .where('residentId', '==', bill.residentId)
@@ -683,7 +683,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
-            // CORRECCIÓN FINAL: Se valida que dueDate sea un objeto de Timestamp válido
+            // Se valida que dueDate sea un objeto de Timestamp válido
             if (bill.dueDate && bill.dueDate instanceof firebase.firestore.Timestamp) {
                 const previousBillsSnapshot = await db.collection('bills')
                     .where('residentId', '==', bill.residentId)
