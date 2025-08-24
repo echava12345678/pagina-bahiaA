@@ -682,6 +682,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const resident = residentDoc.data();
 
             let previousBalance = 0;
+            // CORRECCIÓN: Se añade esta verificación para evitar el error
             if (bill.dueDate) {
                 const previousBillsSnapshot = await db.collection('bills')
                     .where('residentId', '==', resident.id)
