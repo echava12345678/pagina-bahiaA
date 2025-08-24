@@ -289,6 +289,37 @@ residentSearch.addEventListener('input', (e) => {
     });
 });
 
+// --- FUNCIÓN AÑADIDA PARA ENVIAR CORREO ---
+async function sendEmail(recipientEmail, subject, body) {
+    try {
+        const response = await fetch('http://localhost:3000/api/send-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                correo: recipientEmail,
+                asunto: subject,
+                cuerpo: body
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('La respuesta del servidor no fue exitosa.');
+        }
+
+        const data = await response.json();
+        console.log('Correo enviado:', data.message);
+        return true;
+
+    } catch (error) {
+        console.error('Error al enviar el email:', error);
+        alert(`Error al enviar el email: ${error.message}`);
+        return false;
+    }
+}
+// --- FIN DE LA FUNCIÓN AÑADIDA ---
+
 // Bill CRUD operations
 billForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -318,6 +349,19 @@ billForm.addEventListener('submit', async (e) => {
         alert('Factura agregada exitosamente.');
         billForm.reset();
         loadResidents();
+
+        // --- CÓDIGO AÑADIDO PARA ENVIAR CORREO ---
+        const residentDoc = await db.collection('residents').doc(residentId).get();
+        if (residentDoc.exists) {
+            const resident = residentDoc.data();
+            const emailSubject = `Nueva Factura: ${concept}`;
+            const emailBody = `Hola ${resident.name},\n\nSe ha generado una nueva factura en tu perfil por el concepto de ${concept} con un valor de ${formatCurrency(amount)}.\n\nPor favor, ingresa a tu perfil para verificar los detalles.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
+            await sendEmail(resident.email, emailSubject, emailBody);
+        } else {
+            console.error("No se encontró al residente para enviar la notificación.");
+        }
+        // --- FIN DEL CÓDIGO AÑADIDO ---
+
     } catch (err) {
         console.error("Error adding bill: ", err);
         alert('Error al agregar factura.');
