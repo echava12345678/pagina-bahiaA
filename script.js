@@ -747,19 +747,24 @@ editBillForm.addEventListener('submit', async (e) => {
 
     showSpinner();
     try {
-        const localDueDate = new Date(dueDate);
-        const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
+        // SOLUCIÓN: Usar la fecha en formato YYYY-MM-DD para crear una fecha UTC
+        const utcDueDate = new Date(dueDate + 'T00:00:00Z');
+        const utcPaymentDate = paymentDate ? new Date(paymentDate + 'T00:00:00Z') : null;
 
         await db.collection('bills').doc(billId).update({
-            dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
+            dueDate: firebase.firestore.Timestamp.fromDate(utcDueDate),
             amount,
             concept,
             status,
-            paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
+            paymentDate: utcPaymentDate ? firebase.firestore.Timestamp.fromDate(utcPaymentDate) : null,
             paidAmount: paidAmount // Nuevo campo
         });
         alert('Factura actualizada exitosamente.');
         editBillModal.classList.remove('active');
+        // Recargar la tabla para mostrar los cambios
+        if (currentResidentId) {
+            showBillHistory(currentResidentId);
+        }
     } catch (err) {
         console.error("Error updating bill:", err);
         alert('Error al actualizar factura.');
