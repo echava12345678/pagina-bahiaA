@@ -37,7 +37,7 @@ const editBillForm = document.getElementById('edit-bill-form');
 const residentSearch = document.getElementById('resident-search');
 const excelFile = document.getElementById('excel-file');
 const showAddResidentBtn = document.getElementById('show-add-resident-btn');
-const showAddBillBtn = document = document.getElementById('show-add-bill-btn');
+const showAddBillBtn = document.getElementById('show-add-bill-btn');
 const showUploadBillsBtn = document.getElementById('show-upload-bills-btn');
 const addResidentFormSection = document.getElementById('add-resident-form');
 const addBillFormSection = document.getElementById('add-bill-form');
@@ -48,6 +48,16 @@ const showChangePasswordBtn = document.getElementById('show-change-password-form
 const credentialsError = document.getElementById('credentials-error');
 const credentialsSuccess = document.getElementById('credentials-success');
 const loadingSpinner = document.getElementById('loading-spinner');
+
+// Nuevo DOM
+const showAdminPaymentsBtn = document.getElementById('show-admin-payments-btn');
+const adminPaymentsSection = document.getElementById('admin-payments-section');
+const adminPaymentsTableBody = document.querySelector('#admin-payments-table tbody');
+const showResidentPaymentsBtn = document.getElementById('show-resident-payments-btn');
+const residentPaymentsSection = document.getElementById('resident-payments-section');
+const residentPaymentsTableBody = document.querySelector('#resident-payments-table tbody');
+const billListSection = document.getElementById('bill-list-section');
+
 
 // Global variables
 let currentResidentId = null;
@@ -68,9 +78,13 @@ function hideSpinner() {
     loadingSpinner.style.display = 'none';
 }
 
-// Función para mostrar/ocultar secciones de formularios
+// Función para mostrar/ocultar secciones de formularios y tablas
 function toggleSection(sectionIdToShow) {
-    const sections = [addResidentFormSection, addBillFormSection, uploadBillsSection, changeCredentialsForm];
+    const sections = [
+        addResidentFormSection, addBillFormSection, uploadBillsSection, 
+        changeCredentialsForm, adminPaymentsSection, residentPaymentsSection,
+        billListSection
+    ];
     sections.forEach(section => {
         if (section && section.id === sectionIdToShow) {
             section.classList.toggle('hidden');
@@ -79,6 +93,7 @@ function toggleSection(sectionIdToShow) {
         }
     });
 }
+
 
 function formatDate(timestamp) {
     if (!timestamp || !timestamp.seconds) return '';
@@ -162,10 +177,12 @@ residentLogoutBtn.addEventListener('click', () => {
 // --- Admin Panel Functions ---
 
 // Event listeners para mostrar formularios
-showAddResidentBtn.addEventListener('click', () => toggleSection('add-resident-form'));
-showAddBillBtn.addEventListener('click', () => toggleSection('add-bill-form'));
-showUploadBillsBtn.addEventListener('click', () => toggleSection('upload-bills-section'));
-showChangePasswordBtn.addEventListener('click', () => toggleSection('change-credentials-form'));
+showAddResidentBtn.addEventListener('click', () => { toggleSection('add-resident-form'); billListSection.classList.remove('hidden'); });
+showAddBillBtn.addEventListener('click', () => { toggleSection('add-bill-form'); billListSection.classList.remove('hidden'); });
+showUploadBillsBtn.addEventListener('click', () => { toggleSection('upload-bills-section'); billListSection.classList.remove('hidden'); });
+showChangePasswordBtn.addEventListener('click', () => { toggleSection('change-credentials-form'); billListSection.classList.remove('hidden'); });
+showAdminPaymentsBtn.addEventListener('click', () => { toggleSection('admin-payments-section'); loadAdminPayments(); });
+
 
 // Resident CRUD operations
 residentForm.addEventListener('submit', async (e) => {
@@ -517,172 +534,7 @@ billHistoryModal.addEventListener('click', async (e) => {
         }
     } else if (downloadBtn) {
         const billId = downloadBtn.dataset.id;
-        showSpinner();
-        try {
-            const billDoc = await db.collection('bills').doc(billId).get();
-            const bill = billDoc.data();
-            const residentDoc = await db.collection('residents').doc(bill.residentId).get();
-            const resident = residentDoc.data();
-
-            let previousBalance = 0;
-            let accumulatedCredit = 0;
-
-            // FIX: Removida la cláusula orderBy y se ordenará en el cliente para evitar el error de índice
-            const allBillsSnapshot = await db.collection('bills')
-                .where('residentId', '==', bill.residentId)
-                .get();
-
-            const allBills = allBillsSnapshot.docs.map(doc => ({
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.seconds || 0
-            }));
-            allBills.sort((a, b) => a.createdAt - b.createdAt);
-
-            allBills.forEach(prevBill => {
-                if (prevBill.createdAt < bill.createdAt.seconds) {
-                    if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            accumulatedCredit += credit;
-                        }
-                    }
-                }
-            });
-
-            // FIX: Lógica de cálculo corregida para el PDF
-            const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0, 0, 0, 0);
-            }
-
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
-                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
-
-            const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDue = bill.amount + previousBalance + multa;
-            const paidThisMonth = bill.paidAmount || 0;
-
-            let finalAmount = totalDue - paidThisMonth;
-            let currentCredit = 0;
-
-            if (finalAmount < 0) {
-                currentCredit = Math.abs(finalAmount);
-                finalAmount = 0;
-            }
-
-            let saldoAFavorFinal = accumulatedCredit + currentCredit;
-
-            const receiptContent = `
-                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 10px;">
-                                <div style="text-align: center;">
-                                    <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
-                                    Nit 901048187-4<br>
-                                    Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
-                                </div>
-                            </td>
-                            <td style="border: 1px solid #000; padding: 10px; text-align: right;">
-                                <img src="logo.png" alt="Logo" style="max-height: 50px;">
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${billDoc.id.substring(0, 8)}</span><br>
-                                <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
-                            </td>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PERIODO DE FACTURACIÓN:</strong><br>
-                                ${new Date().toLocaleDateString('es-CO', {
-                                    month: 'long',
-                                    year: 'numeric'
-                                }).toUpperCase()}<br>
-                                <strong>FECHA VENCIMIENTO:</strong> ${formatDate(bill.dueDate)}
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 10px;">
-                                APTO: <span style="font-weight: bold;">${resident.depto}</span><br>
-                                COPROPIETARIO: <span style="font-weight: bold;">${resident.name.toUpperCase()}</span>
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr style="background-color: #f2f2f2;">
-                            <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PAGADO ESTE MES</strong>
-                                <br>${formatCurrency(paidThisMonth)}
-                            </td>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
-                                <strong>TOTAL A PAGAR</strong>
-                                <br><span style="font-size: 14px; font-weight: bold;">${formatCurrency(finalAmount)}</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
-                                CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
-                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            `;
-            const options = {
-                margin: 10,
-                filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
-                image: {
-                    type: 'jpeg',
-                    quality: 0.98
-                },
-                html2canvas: {
-                    scale: 2
-                },
-                jsPDF: {
-                    unit: 'mm',
-                    format: 'a4',
-                    orientation: 'portrait'
-                }
-            };
-            html2pdf().from(receiptContent).set(options).save();
-        } catch (err) {
-            console.error("Error generating PDF:", err);
-            alert('Error al generar el recibo.');
-        } finally {
-            hideSpinner();
-        }
+        generatePDF(billId);
     }
 });
 
@@ -753,6 +605,9 @@ editBillForm.addEventListener('submit', async (e) => {
         });
         alert('Factura actualizada exitosamente.');
         editBillModal.classList.remove('active');
+        if (currentResidentId) {
+            showBillHistory(currentResidentId);
+        }
     } catch (err) {
         console.error("Error updating bill:", err);
         alert('Error al actualizar factura.');
@@ -830,12 +685,13 @@ changeCredentialsFormInner.addEventListener('submit', async (e) => {
 });
 
 // --- Resident Panel Functions ---
+showResidentPaymentsBtn.addEventListener('click', () => { toggleSection('resident-payments-section'); loadResidentPayments(); });
 
 async function loadResidentBills(residentId) {
     showSpinner();
     residentBillsTableBody.innerHTML = '';
     try {
-        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
+        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).where('status', '==', 'Pendiente').get();
         if (billsSnapshot.empty) {
             residentBillsTableBody.innerHTML = `<tr><td colspan="5">No se encontraron facturas pendientes.</td></tr>`;
         } else {
@@ -867,6 +723,7 @@ async function loadResidentBills(residentId) {
                 `;
             });
         }
+        toggleSection(null);
     } catch (err) {
         console.error("Error loading resident bills:", err);
         alert('Error al cargar sus facturas.');
@@ -880,171 +737,269 @@ residentBillsTableBody.addEventListener('click', async (e) => {
     const downloadBtn = e.target.closest('.download-receipt-btn');
     if (downloadBtn) {
         const billId = downloadBtn.dataset.id;
-        showSpinner();
-        try {
-            const billDoc = await db.collection('bills').doc(billId).get();
-            const bill = billDoc.data();
-            const residentDoc = await db.collection('residents').doc(bill.residentId).get();
-            const resident = residentDoc.data();
+        generatePDF(billId);
+    }
+});
 
-            let previousBalance = 0;
-            let accumulatedCredit = 0;
+// NUEVA FUNCION PARA GENERAR PDF
+async function generatePDF(billId) {
+    showSpinner();
+    try {
+        const billDoc = await db.collection('bills').doc(billId).get();
+        const bill = billDoc.data();
+        const residentDoc = await db.collection('residents').doc(bill.residentId).get();
+        const resident = residentDoc.data();
 
-            // FIX: Removida la cláusula orderBy y se ordenará en el cliente para evitar el error de índice
-            const allBillsSnapshot = await db.collection('bills')
-                .where('residentId', '==', bill.residentId)
-                .get();
+        let previousBalance = 0;
+        let accumulatedCredit = 0;
 
-            const allBills = allBillsSnapshot.docs.map(doc => ({
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.seconds || 0
-            }));
-            allBills.sort((a, b) => a.createdAt - b.createdAt);
+        const allBillsSnapshot = await db.collection('bills')
+            .where('residentId', '==', bill.residentId)
+            .get();
 
-            allBills.forEach(prevBill => {
-                if (prevBill.createdAt < bill.createdAt.seconds) {
-                    if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            accumulatedCredit += credit;
-                        }
+        const allBills = allBillsSnapshot.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id,
+            createdAt: doc.data().createdAt?.seconds || 0
+        }));
+        allBills.sort((a, b) => a.createdAt - b.createdAt);
+
+        let foundCurrentBill = false;
+        allBills.forEach(prevBill => {
+            if (prevBill.id === billId) {
+                foundCurrentBill = true;
+            } else if (!foundCurrentBill) {
+                if (prevBill.status === 'Pendiente') {
+                    previousBalance += prevBill.amount;
+                } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
+                    const credit = prevBill.paidAmount - prevBill.amount;
+                    if (credit > 0) {
+                        accumulatedCredit += credit;
+                    } else if (credit < 0) {
+                        previousBalance += Math.abs(credit);
                     }
                 }
-            });
-
-            // FIX: Lógica de cálculo corregida para el PDF
-            const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0, 0, 0, 0);
             }
+        });
 
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
-                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
-
-            const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDue = bill.amount + previousBalance + multa;
-            const paidThisMonth = bill.paidAmount || 0;
-
-            let finalAmount = totalDue - paidThisMonth;
-            let currentCredit = 0;
-
-            if (finalAmount < 0) {
-                currentCredit = Math.abs(finalAmount);
-                finalAmount = 0;
-            }
-
-            let saldoAFavorFinal = accumulatedCredit + currentCredit;
-
-            const receiptContent = `
-                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 10px;">
-                                <div style="text-align: center;">
-                                    <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
-                                    Nit 901048187-4<br>
-                                    Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
-                                </div>
-                            </td>
-                            <td style="border: 1px solid #000; padding: 10px; text-align: right;">
-                                <img src="logo.png" alt="Logo" style="max-height: 50px;">
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${billDoc.id.substring(0, 8)}</span><br>
-                                <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
-                            </td>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PERIODO DE FACTURACIÓN:</strong><br>
-                                ${new Date().toLocaleDateString('es-CO', {
-                                    month: 'long',
-                                    year: 'numeric'
-                                }).toUpperCase()}<br>
-                                <strong>FECHA VENCIMIENTO:</strong> ${formatDate(bill.dueDate)}
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 10px;">
-                                APTO: <span style="font-weight: bold;">${resident.depto}</span><br>
-                                COPROPIETARIO: <span style="font-weight: bold;">${resident.name.toUpperCase()}</span>
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr style="background-color: #f2f2f2;">
-                            <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PAGADO ESTE MES</strong>
-                                <br>${formatCurrency(paidThisMonth)}
-                            </td>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
-                                <strong>TOTAL A PAGAR</strong>
-                                <br><span style="font-size: 14px; font-weight: bold;">${formatCurrency(finalAmount)}</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
-                                CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
-                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            `;
-            const options = {
-                margin: 10,
-                filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
-                image: {
-                    type: 'jpeg',
-                    quality: 0.98
-                },
-                html2canvas: {
-                    scale: 2
-                },
-                jsPDF: {
-                    unit: 'mm',
-                    format: 'a4',
-                    orientation: 'portrait'
-                }
-            };
-            html2pdf().from(receiptContent).set(options).save();
-        } catch (err) {
-            console.error("Error generating PDF:", err);
-            alert('Error al generar el recibo.');
-        } finally {
-            hideSpinner();
+        const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
+        if (dueDate) {
+            dueDate.setHours(0, 0, 0, 0);
         }
+
+        const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
+            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+
+        const multa = isLate ? bill.amount * 0.015 : 0;
+        let totalDue = bill.amount + previousBalance + multa;
+        
+        let finalAmount = totalDue - accumulatedCredit;
+        let currentCredit = 0;
+
+        if (finalAmount < 0) {
+            currentCredit = Math.abs(finalAmount);
+            finalAmount = 0;
+        }
+
+        const paidThisMonth = bill.paidAmount || 0;
+        let saldoAFavorFinal = accumulatedCredit + (paidThisMonth - (bill.amount + multa));
+        if (saldoAFavorFinal < 0) {
+            saldoAFavorFinal = 0;
+        }
+
+        const receiptContent = `
+            <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 10px;">
+                            <div style="text-align: center;">
+                                <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
+                                Nit 901048187-4<br>
+                                Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
+                            </div>
+                        </td>
+                        <td style="border: 1px solid #000; padding: 10px; text-align: right;">
+                            <img src="logo.png" alt="Logo" style="max-height: 50px;">
+                        </td>
+                    </tr>
+                </table>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                    <tr>
+                        <td style="width: 50%; border: 1px solid #000; padding: 10px;">
+                            <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${billId.substring(0, 8)}</span><br>
+                            <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
+                        </td>
+                        <td style="width: 50%; border: 1px solid #000; padding: 10px;">
+                            <strong>PERIODO DE FACTURACIÓN:</strong><br>
+                            ${new Date().toLocaleDateString('es-CO', {
+                                month: 'long',
+                                year: 'numeric'
+                            }).toUpperCase()}<br>
+                            <strong>FECHA VENCIMIENTO:</strong> ${formatDate(bill.dueDate)}
+                        </td>
+                    </tr>
+                </table>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 10px;">
+                            APTO: <span style="font-weight: bold;">${resident.depto}</span><br>
+                            COPROPIETARIO: <span style="font-weight: bold;">${resident.name.toUpperCase()}</span>
+                        </td>
+                    </tr>
+                </table>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                    <tr style="background-color: #f2f2f2;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
+                        <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                        <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
+                        <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
+                        <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                        <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                        <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
+                        <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(accumulatedCredit)}</td>
+                        <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
+                        <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                    </tr>
+                </table>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="width: 50%; border: 1px solid #000; padding: 10px;">
+                            <strong>PAGADO ESTE MES</strong>
+                            <br>${formatCurrency(paidThisMonth)}
+                        </td>
+                        <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
+                            <strong>TOTAL A PAGAR</strong>
+                            <br><span style="font-size: 14px; font-weight: bold;">${formatCurrency(finalAmount)}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
+                            CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
+                            A NOMBRE DE EDIFICIO BAHÍA ETAPA A
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        `;
+        const options = {
+            margin: 10,
+            filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
+            image: {
+                type: 'jpeg',
+                quality: 0.98
+            },
+            html2canvas: {
+                scale: 2
+            },
+            jsPDF: {
+                unit: 'mm',
+                format: 'a4',
+                orientation: 'portrait'
+            }
+        };
+        html2pdf().from(receiptContent).set(options).save();
+    } catch (err) {
+        console.error("Error generating PDF:", err);
+        alert('Error al generar el recibo.');
+    } finally {
+        hideSpinner();
+    }
+}
+
+// Nueva función para cargar pagos del admin
+async function loadAdminPayments() {
+    showSpinner();
+    adminPaymentsTableBody.innerHTML = '';
+    try {
+        const paymentsSnapshot = await db.collection('bills')
+            .where('status', '==', 'Pagada')
+            .orderBy('paymentDate', 'desc')
+            .get();
+
+        if (paymentsSnapshot.empty) {
+            adminPaymentsTableBody.innerHTML = `<tr><td colspan="6">No se encontraron pagos registrados.</td></tr>`;
+        } else {
+            for (const doc of paymentsSnapshot.docs) {
+                const payment = doc.data();
+                const residentDoc = await db.collection('residents').doc(payment.residentId).get();
+                const resident = residentDoc.exists ? residentDoc.data() : { name: 'Desconocido', depto: 'N/A' };
+                const row = adminPaymentsTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${resident.name}</td>
+                    <td>${resident.depto}</td>
+                    <td>${payment.concept}</td>
+                    <td>${formatCurrency(payment.amount)}</td>
+                    <td>${formatCurrency(payment.paidAmount || 0)}</td>
+                    <td>${formatDate(payment.paymentDate)}</td>
+                `;
+            }
+        }
+    } catch (err) {
+        console.error("Error loading admin payments:", err);
+        alert('Error al cargar el historial de pagos.');
+    } finally {
+        hideSpinner();
+    }
+}
+
+
+// Nueva función para cargar pagos del residente
+async function loadResidentPayments() {
+    showSpinner();
+    residentPaymentsTableBody.innerHTML = '';
+    try {
+        const paymentsSnapshot = await db.collection('bills')
+            .where('residentId', '==', currentResidentId)
+            .where('status', '==', 'Pagada')
+            .orderBy('paymentDate', 'desc')
+            .get();
+
+        if (paymentsSnapshot.empty) {
+            residentPaymentsTableBody.innerHTML = `<tr><td colspan="5">No se encontraron pagos registrados.</td></tr>`;
+        } else {
+            paymentsSnapshot.forEach(doc => {
+                const payment = doc.data();
+                const row = residentPaymentsTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${payment.concept}</td>
+                    <td>${formatCurrency(payment.amount)}</td>
+                    <td>${formatCurrency(payment.paidAmount || 0)}</td>
+                    <td>${formatDate(payment.dueDate)}</td>
+                    <td>${formatDate(payment.paymentDate)}</td>
+                    <td>
+                        <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
+                            <i class="fas fa-file-download"></i> Descargar Recibo
+                        </button>
+                    </td>
+                `;
+            });
+        }
+    } catch (err) {
+        console.error("Error loading resident payments:", err);
+        alert('Error al cargar sus pagos.');
+    } finally {
+        hideSpinner();
+    }
+}
+
+
+// Download receipt as PDF
+residentPaymentsTableBody.addEventListener('click', async (e) => {
+    const downloadBtn = e.target.closest('.download-receipt-btn');
+    if (downloadBtn) {
+        const billId = downloadBtn.dataset.id;
+        generatePDF(billId);
     }
 });
