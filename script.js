@@ -85,7 +85,11 @@ function formatDate(timestamp) {
     const date = new Date(timestamp.seconds * 1000);
     // Para que muestre la fecha local correcta
     const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-    return localDate.toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    return localDate.toLocaleDateString('es-CO', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
 }
 
 function parseCurrency(value) {
@@ -731,40 +735,47 @@ document.body.addEventListener('click', (e) => {
 });
 
 // FIX: Event listener para el formulario de cambio de credenciales
-changeCredentialsForm.addEventListener('submit', async (e) => {
+changeCredentialsFormInner.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const newUsername = changeCredentialsForm['new-username'].value;
-    const newPassword = changeCredentialsForm['new-password'].value;
-    const confirmPassword = changeCredentialsForm['confirm-password'].value;
+    const oldUsername = changeCredentialsFormInner['old-username'].value;
+    const oldPassword = changeCredentialsFormInner['old-password'].value;
+    const newUsername = changeCredentialsFormInner['new-username'].value;
+    const newPassword = changeCredentialsFormInner['new-password'].value;
 
     credentialsError.textContent = '';
     credentialsSuccess.textContent = '';
 
-    if (!newUsername || !newPassword || !confirmPassword) {
+    if (!oldUsername || !oldPassword || !newUsername || !newPassword) {
         credentialsError.textContent = 'Por favor, completa todos los campos.';
         return;
     }
 
-    if (newPassword !== confirmPassword) {
-        credentialsError.textContent = 'Las contraseñas no coinciden.';
-        return;
-    }
-
-    if (!currentResidentId) {
-        credentialsError.textContent = 'Error: No se ha seleccionado un residente. Por favor, reinicia la página.';
+    if (newPassword === oldPassword) {
+        credentialsError.textContent = 'La nueva contraseña debe ser diferente a la actual.';
         return;
     }
 
     showSpinner();
     try {
-        await db.collection('residents').doc(currentResidentId).update({
-            username: newUsername,
-            password: newPassword,
-            credentialsChanged: true
-        });
-        credentialsSuccess.textContent = 'Credenciales actualizadas exitosamente.';
-        changeCredentialsForm.reset();
-        loadResidents(); // Refresh the table to show updated username
+        const residentDoc = await db.collection('residents').doc(currentResidentId).get();
+        if (!residentDoc.exists) {
+            credentialsError.textContent = 'Error: Residente no encontrado.';
+            hideSpinner();
+            return;
+        }
+
+        const resident = residentDoc.data();
+        if (resident.username === oldUsername && resident.password === oldPassword) {
+            await db.collection('residents').doc(currentResidentId).update({
+                username: newUsername,
+                password: newPassword,
+                credentialsChanged: true
+            });
+            credentialsSuccess.textContent = 'Credenciales actualizadas exitosamente.';
+            changeCredentialsFormInner.reset();
+        } else {
+            credentialsError.textContent = 'Usuario o contraseña actuales incorrectos.';
+        }
     } catch (err) {
         console.error("Error updating credentials:", err);
         credentialsError.textContent = 'Error al actualizar credenciales. Intenta de nuevo.';
