@@ -529,6 +529,9 @@ billHistoryModal.addEventListener('click', async (e) => {
                                     Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
                                 </div>
                             </td>
+                            <td style="border: 1px solid #000; padding: 10px; text-align: right;">
+<img src="logo bahia a.png" alt="Logo" style="max-height: 50px;">
+</td>
                         </tr>
                     </table>
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -824,6 +827,9 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                                     Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
                                 </div>
                             </td>
+                            <td style="border: 1px solid #000; padding: 10px; text-align: right;">
+<img src="logo bahia a.png" alt="Logo" style="max-height: 50px;">
+</td>
                         </tr>
                     </table>
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
