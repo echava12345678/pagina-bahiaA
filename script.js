@@ -574,7 +574,7 @@ billHistoryModal.addEventListener('click', async (e) => {
             }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
-            // Calculate previous balance and apply credit
+            // Calculate previous balance (amount + multa) and apply credit
             let foundCurrentBill = false;
             for (const prevBill of allBills) {
                 if (prevBill.id === billId) {
@@ -582,7 +582,10 @@ billHistoryModal.addEventListener('click', async (e) => {
                 }
                 if (!foundCurrentBill) {
                     if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
+                        const prevDueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
+                        const isLate = prevDueDate && new Date() > prevDueDate;
+                        const prevMulta = isLate ? prevBill.amount * 0.015 : 0;
+                        previousBalance += prevBill.amount + prevMulta;
                     } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
                         const credit = prevBill.paidAmount - prevBill.amount;
                         if (credit > 0) {
@@ -594,21 +597,20 @@ billHistoryModal.addEventListener('click', async (e) => {
                 }
             }
 
-            if (currentCredit > 0 && bill.status === 'Pendiente') {
-                appliedCredit = Math.min(bill.amount, currentCredit);
-            }
-
+            // Calculate multa for the current bill
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0, 0, 0, 0);
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate);
+            const multa = isLate ? bill.amount * 0.015 : 0;
+            
+            // Apply credit to the total amount
+            let totalToPay = previousBalance + bill.amount + multa;
+            let finalAmount = totalToPay;
+            let currentCreditUsed = 0;
+            if (currentCredit > 0) {
+              currentCreditUsed = Math.min(totalToPay, currentCredit);
+              finalAmount = totalToPay - currentCreditUsed;
             }
 
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
-                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
-
-            const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDueBeforeCredit = bill.amount + previousBalance + multa;
-            const finalAmount = totalDueBeforeCredit - appliedCredit;
             const paidThisMonth = bill.paidAmount || 0;
 
             const receiptContent = `
@@ -656,24 +658,30 @@ billHistoryModal.addEventListener('click', async (e) => {
                             <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">TOTAL A PAGAR</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">Saldo anterior</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
+                            <td style="padding: 8px; border: 1px solid #000;">Mora (1.5%)</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(appliedCredit)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCreditUsed)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
@@ -979,7 +987,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
-            // Calculate previous balance and apply credit
+            // Calculate previous balance (amount + multa) and apply credit
             let foundCurrentBill = false;
             for (const prevBill of allBills) {
                 if (prevBill.id === billId) {
@@ -987,7 +995,10 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                 }
                 if (!foundCurrentBill) {
                     if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
+                        const prevDueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
+                        const isLate = prevDueDate && new Date() > prevDueDate;
+                        const prevMulta = isLate ? prevBill.amount * 0.015 : 0;
+                        previousBalance += prevBill.amount + prevMulta;
                     } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
                         const credit = prevBill.paidAmount - prevBill.amount;
                         if (credit > 0) {
@@ -999,21 +1010,20 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                 }
             }
 
-            if (currentCredit > 0 && bill.status === 'Pendiente') {
-                appliedCredit = Math.min(bill.amount, currentCredit);
-            }
-
+            // Calculate multa for the current bill
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0, 0, 0, 0);
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate);
+            const multa = isLate ? bill.amount * 0.015 : 0;
+            
+            // Apply credit to the total amount
+            let totalToPay = previousBalance + bill.amount + multa;
+            let finalAmount = totalToPay;
+            let currentCreditUsed = 0;
+            if (currentCredit > 0) {
+              currentCreditUsed = Math.min(totalToPay, currentCredit);
+              finalAmount = totalToPay - currentCreditUsed;
             }
 
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
-                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
-
-            const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDueBeforeCredit = bill.amount + previousBalance + multa;
-            const finalAmount = totalDueBeforeCredit - appliedCredit;
             const paidThisMonth = bill.paidAmount || 0;
 
             const receiptContent = `
@@ -1061,24 +1071,30 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                             <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">TOTAL A PAGAR</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">Saldo anterior</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
+                            <td style="padding: 8px; border: 1px solid #000;">Mora (1.5%)</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(appliedCredit)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCreditUsed)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
