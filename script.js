@@ -490,15 +490,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                 }
             });
             
-            // Si el saldo a favor es mayor que el saldo anterior, descontarlo
-            if (accumulatedCredit >= previousBalance) {
-                accumulatedCredit -= previousBalance;
-                previousBalance = 0;
-            } else {
-                previousBalance -= accumulatedCredit;
-                accumulatedCredit = 0;
-            }
-
+            // FIX: Lógica de cálculo corregida para el PDF
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
                 dueDate.setHours(0, 0, 0, 0);
@@ -507,13 +499,20 @@ billHistoryModal.addEventListener('click', async (e) => {
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
                            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             
-            const currentAmountToPay = bill.status === 'Pendiente' ? bill.amount : 0;
             const multa = isLate ? bill.amount * 0.10 : 0;
-            const paidThisMonth = bill.status === 'Pagada' ? bill.paidAmount : 0;
+            const totalDue = bill.amount + previousBalance + multa;
+            const paidThisMonth = bill.paidAmount || 0;
 
-            const finalAmount = currentAmountToPay + previousBalance + multa;
-            const currentCredit = (bill.status === 'Pagada' && bill.paidAmount) ? (bill.paidAmount - bill.amount > 0 ? bill.paidAmount - bill.amount : 0) : 0;
-            
+            let finalAmount = totalDue - paidThisMonth;
+            let currentCredit = 0;
+
+            if (finalAmount < 0) {
+                currentCredit = Math.abs(finalAmount);
+                finalAmount = 0;
+            }
+
+            let saldoAFavorFinal = accumulatedCredit + currentCredit;
+
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -558,8 +557,8 @@ billHistoryModal.addEventListener('click', async (e) => {
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay + previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
@@ -569,7 +568,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(accumulatedCredit)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
@@ -661,7 +660,7 @@ editBillForm.addEventListener('submit', async (e) => {
     const concept = editBillForm['edit-bill-concept'].value;
     const status = editBillForm['edit-bill-status'].value;
     const paymentDate = editBillForm['edit-bill-payment-date'].value;
-    const paidAmount = parseFloat(editBillForm['edit-bill-paid-amount'].value) || 0; // Nuevo campo
+    const paidAmount = parseCurrency(editBillForm['edit-bill-paid-amount'].value) || 0; // FIX: Uso de parseCurrency
 
     showSpinner();
     try {
@@ -786,15 +785,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                 }
             });
             
-            // Si el saldo a favor es mayor que el saldo anterior, descontarlo
-            if (accumulatedCredit >= previousBalance) {
-                accumulatedCredit -= previousBalance;
-                previousBalance = 0;
-            } else {
-                previousBalance -= accumulatedCredit;
-                accumulatedCredit = 0;
-            }
-
+            // FIX: Lógica de cálculo corregida para el PDF
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
                 dueDate.setHours(0, 0, 0, 0);
@@ -803,13 +794,20 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
                            (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             
-            const currentAmountToPay = bill.status === 'Pendiente' ? bill.amount : 0;
             const multa = isLate ? bill.amount * 0.10 : 0;
-            const paidThisMonth = bill.status === 'Pagada' ? bill.paidAmount : 0;
+            const totalDue = bill.amount + previousBalance + multa;
+            const paidThisMonth = bill.paidAmount || 0;
 
-            const finalAmount = currentAmountToPay + previousBalance + multa;
-            const currentCredit = (bill.status === 'Pagada' && bill.paidAmount) ? (bill.paidAmount - bill.amount > 0 ? bill.paidAmount - bill.amount : 0) : 0;
-            
+            let finalAmount = totalDue - paidThisMonth;
+            let currentCredit = 0;
+
+            if (finalAmount < 0) {
+                currentCredit = Math.abs(finalAmount);
+                finalAmount = 0;
+            }
+
+            let saldoAFavorFinal = accumulatedCredit + currentCredit;
+
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -854,8 +852,8 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay + previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
@@ -865,303 +863,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(accumulatedCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PAGADO ESTE MES</strong>
-                                <br>${formatCurrency(paidThisMonth)}
-                            </td>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px; text-align: right; background-color: #f2f2f2;">
-                                <strong>TOTAL A PAGAR</strong>
-                                <br><span style="font-size: 14px; font-weight: bold;">${formatCurrency(finalAmount)}</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
-                                CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
-                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            `;
-            const options = {
-                margin: 10,
-                filename: `Recibo_${resident.depto}_${bill.concept}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            html2pdf().from(receiptContent).set(options).save();
-        } catch (err) {
-            console.error("Error generating PDF:", err);
-            alert('Error al generar el recibo.');
-        } finally {
-            hideSpinner();
-        }
-    }
-});
-
-async function showEditBillModal(billId) {
-    showSpinner();
-    try {
-        const billDoc = await db.collection('bills').doc(billId).get();
-        const bill = billDoc.data();
-        editBillForm['edit-bill-id'].value = billId;
-        
-        // Corrección de la fecha:
-        const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-        if (dueDate) {
-            const localDueDate = new Date(dueDate.getTime() - dueDate.getTimezoneOffset() * 60000);
-            editBillForm['edit-bill-due-date'].value = localDueDate.toISOString().slice(0, 10);
-        } else {
-            editBillForm['edit-bill-due-date'].value = '';
-        }
-        
-        editBillForm['edit-bill-amount'].value = bill.amount;
-        editBillForm['edit-bill-concept'].value = bill.concept;
-        editBillForm['edit-bill-status'].value = bill.status;
-
-        // Nuevo campo en el modal
-        editBillForm['edit-bill-paid-amount'].value = bill.paidAmount || '';
-
-        // Corrección de la fecha de pago:
-        const paymentDate = bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000) : null;
-        if (paymentDate) {
-            const localPaymentDate = new Date(paymentDate.getTime() - paymentDate.getTimezoneOffset() * 60000);
-            editBillForm['edit-bill-payment-date'].value = localPaymentDate.toISOString().slice(0, 10);
-        } else {
-            editBillForm['edit-bill-payment-date'].value = '';
-        }
-        
-        billHistoryModal.classList.remove('active');
-        editBillModal.classList.add('active');
-    } catch (err) {
-        console.error("Error loading bill for edit:", err);
-        alert('Error al cargar los datos de la factura.');
-    } finally {
-        hideSpinner();
-    }
-}
-
-editBillForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const billId = editBillForm['edit-bill-id'].value;
-    const dueDate = editBillForm['edit-bill-due-date'].value;
-    const amount = parseFloat(editBillForm['edit-bill-amount'].value);
-    const concept = editBillForm['edit-bill-concept'].value;
-    const status = editBillForm['edit-bill-status'].value;
-    const paymentDate = editBillForm['edit-bill-payment-date'].value;
-    const paidAmount = parseFloat(editBillForm['edit-bill-paid-amount'].value) || 0; // Nuevo campo
-
-    showSpinner();
-    try {
-        const localDueDate = new Date(dueDate);
-        const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
-        
-        await db.collection('bills').doc(billId).update({
-            dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
-            amount,
-            concept,
-            status,
-            paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
-            paidAmount: paidAmount // Nuevo campo
-        });
-        alert('Factura actualizada exitosamente.');
-        editBillModal.classList.remove('active');
-    } catch (err) {
-        console.error("Error updating bill:", err);
-        alert('Error al actualizar factura.');
-    } finally {
-        hideSpinner();
-    }
-});
-
-
-// --- Solución del Cierre de Modales: Delegación de Eventos ---
-// Un solo listener que maneja todos los cierres y cancelaciones.
-document.body.addEventListener('click', (e) => {
-    // Cierra cualquier modal si el clic fue en un botón con la clase .close-btn
-    const closeBtn = e.target.closest('.close-btn');
-    if (closeBtn) {
-        const modal = closeBtn.closest('.modal');
-        if (modal) {
-            modal.classList.remove('active');
-            // Si el modal de edición se cierra, muestra el de historial nuevamente
-            if (modal.id === 'edit-bill-modal' && currentResidentId) {
-                showBillHistory(currentResidentId);
-            }
-        }
-    }
-});
-
-// --- Resident Panel Functions ---
-
-async function loadResidentBills(residentId) {
-    showSpinner();
-    residentBillsTableBody.innerHTML = '';
-    try {
-        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
-        if (billsSnapshot.empty) {
-            residentBillsTableBody.innerHTML = `<tr><td colspan="5">No se encontraron facturas pendientes.</td></tr>`;
-        } else {
-            billsSnapshot.forEach(doc => {
-                const bill = doc.data();
-                const today = new Date();
-                // Normaliza la fecha de vencimiento a solo día, mes y año
-                const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-                if (dueDate) {
-                    dueDate.setHours(0, 0, 0, 0);
-                }
-                const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
-                
-                const row = residentBillsTableBody.insertRow();
-                row.dataset.id = doc.id;
-                // FIX: Agregadas las columnas de monto y fecha de pago para igualar la vista de admin
-                row.innerHTML = `
-                    <td>${bill.concept}</td>
-                    <td>${formatCurrency(bill.amount)}</td>
-                    <td>${formatCurrency(bill.paidAmount || 0)}</td>
-                    <td>${formatDate(bill.dueDate)}</td>
-                    <td>${formatDate(bill.paymentDate)}</td>
-                    <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
-                    <td>
-                        <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
-                            <i class="fas fa-file-download"></i> Descargar Recibo
-                        </button>
-                    </td>
-                `;
-            });
-        }
-    } catch (err) {
-        console.error("Error loading resident bills:", err);
-        alert('Error al cargar sus facturas.');
-    } finally {
-        hideSpinner();
-    }
-}
-
-// Download receipt as PDF
-residentBillsTableBody.addEventListener('click', async (e) => {
-    const downloadBtn = e.target.closest('.download-receipt-btn');
-    if (downloadBtn) {
-        const billId = downloadBtn.dataset.id;
-        showSpinner();
-        try {
-            const billDoc = await db.collection('bills').doc(billId).get();
-            const bill = billDoc.data();
-            const residentDoc = await db.collection('residents').doc(bill.residentId).get();
-            const resident = residentDoc.data();
-
-            let previousBalance = 0;
-            let accumulatedCredit = 0;
-            
-            // FIX: Removida la cláusula orderBy y se ordenará en el cliente para evitar el error de índice
-            const allBillsSnapshot = await db.collection('bills')
-                .where('residentId', '==', bill.residentId)
-                .get();
-
-            const allBills = allBillsSnapshot.docs.map(doc => ({ ...doc.data(), createdAt: doc.data().createdAt?.seconds || 0 }));
-            allBills.sort((a, b) => a.createdAt - b.createdAt);
-
-            allBills.forEach(prevBill => {
-                if (prevBill.createdAt < bill.createdAt.seconds) {
-                    if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            accumulatedCredit += credit;
-                        }
-                    }
-                }
-            });
-            
-            // Si el saldo a favor es mayor que el saldo anterior, descontarlo
-            if (accumulatedCredit >= previousBalance) {
-                accumulatedCredit -= previousBalance;
-                previousBalance = 0;
-            } else {
-                previousBalance -= accumulatedCredit;
-                accumulatedCredit = 0;
-            }
-
-            const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0, 0, 0, 0);
-            }
-
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
-                           (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
-            
-            const currentAmountToPay = bill.status === 'Pendiente' ? bill.amount : 0;
-            const multa = isLate ? bill.amount * 0.10 : 0;
-            const paidThisMonth = bill.status === 'Pagada' ? bill.paidAmount : 0;
-
-            const finalAmount = currentAmountToPay + previousBalance + multa;
-            const currentCredit = (bill.status === 'Pagada' && bill.paidAmount) ? (bill.paidAmount - bill.amount > 0 ? bill.paidAmount - bill.amount : 0) : 0;
-            
-            const receiptContent = `
-                <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td colspan="2" style="border: 1px solid #000; padding: 10px;">
-                                <div style="text-align: center;">
-                                    <strong>EDIFICIO BAHÍA ETAPA A</strong><br>
-                                    Nit 901048187-4<br>
-                                    Carrera 65 no. 42-101 Teléfono 3104086837 - Medellín
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${billDoc.id.substring(0, 8)}</span><br>
-                                <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
-                            </td>
-                            <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>PERIODO DE FACTURACIÓN:</strong><br>
-                                ${new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).toUpperCase()}<br>
-                                <strong>FECHA VENCIMIENTO:</strong> ${formatDate(bill.dueDate)}
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 10px;">
-                                APTO: <span style="font-weight: bold;">${resident.depto}</span><br>
-                                COPROPIETARIO: <span style="font-weight: bold;">${resident.name.toUpperCase()}</span>
-                            </td>
-                        </tr>
-                    </table>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                        <tr style="background-color: #f2f2f2;">
-                            <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentAmountToPay + previousBalance)}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(accumulatedCredit)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
