@@ -165,6 +165,7 @@ residentLogoutBtn.addEventListener('click', () => {
 showAddResidentBtn.addEventListener('click', () => toggleSection('add-resident-form'));
 showAddBillBtn.addEventListener('click', () => toggleSection('add-bill-form'));
 showUploadBillsBtn.addEventListener('click', () => toggleSection('upload-bills-section'));
+showChangePasswordBtn.addEventListener('click', () => toggleSection('change-credentials-form'));
 
 // Resident CRUD operations
 residentForm.addEventListener('submit', async (e) => {
