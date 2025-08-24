@@ -384,7 +384,7 @@ async function showBillHistory(residentId) {
         modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
         if (billsSnapshot.empty) {
-            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`;
+            billHistoryTableBody.innerHTML = `<tr><td colspan="7">No se encontraron facturas para este residente.</td></tr>`; // Corregir colspan
         } else {
             billsSnapshot.forEach(doc => {
                 const bill = doc.data();
@@ -468,16 +468,10 @@ billHistoryModal.addEventListener('click', async (e) => {
             });
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0, 0, 0, 0);
-            }
-
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) || 
-                           (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
-            
+            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
+                         (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
             const multa = isLate ? bill.amount * 0.10 : 0;
             const finalAmount = bill.amount + previousBalance + multa;
-            
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -527,7 +521,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(0)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
                         </tr>
@@ -616,8 +610,10 @@ editBillForm.addEventListener('submit', async (e) => {
             paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(new Date(paymentDate)) : null,
         });
         alert('Factura actualizada exitosamente.');
-        // CORRECCIÓN: El modal se cerrará con el event listener del body, que luego recargará la tabla.
         editBillModal.classList.remove('active');
+        if (currentResidentId) {
+            showBillHistory(currentResidentId);
+        }
     } catch (err) {
         console.error("Error updating bill:", err);
         alert('Error al actualizar factura.');
@@ -860,8 +856,10 @@ editBillForm.addEventListener('submit', async (e) => {
             paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(new Date(paymentDate)) : null,
         });
         alert('Factura actualizada exitosamente.');
-        // CORRECCIÓN: El modal se cerrará con el event listener del body, que luego recargará la tabla.
         editBillModal.classList.remove('active');
+        if (currentResidentId) {
+            showBillHistory(currentResidentId);
+        }
     } catch (err) {
         console.error("Error updating bill:", err);
         alert('Error al actualizar factura.');
@@ -887,74 +885,3 @@ document.body.addEventListener('click', (e) => {
         }
     }
 });
-
-// --- Resident Panel Functions ---
-
-async function loadResidentBills(residentId) {
-    showSpinner();
-    residentBillsTableBody.innerHTML = '';
-    try {
-        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
-        if (billsSnapshot.empty) {
-            residentBillsTableBody.innerHTML = `<tr><td colspan="5">No se encontraron facturas pendientes.</td></tr>`;
-        } else {
-            billsSnapshot.forEach(doc => {
-                const bill = doc.data();
-                const today = new Date();
-                // Normaliza la fecha de vencimiento a solo día, mes y año
-                const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-                if (dueDate) {
-                    dueDate.setHours(0, 0, 0, 0);
-                }
-                const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
-                
-                const row = residentBillsTableBody.insertRow();
-                row.dataset.id = doc.id;
-                row.innerHTML = `
-                    <td>${bill.concept}</td>
-                    <td>${formatCurrency(bill.amount)}</td>
-                    <td>${formatDate(bill.dueDate)}</td>
-                    <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
-                    <td>
-                        <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
-                            <i class="fas fa-file-download"></i> Descargar Recibo
-                        </button>
-                    </td>
-                `;
-            });
-        }
-    } catch (err) {
-        console.error("Error loading resident bills:", err);
-        alert('Error al cargar sus facturas.');
-    } finally {
-        hideSpinner();
-    }
-}
-
-// Download receipt as PDF
-residentBillsTableBody.addEventListener('click', async (e) => {
-    const downloadBtn = e.target.closest('.download-receipt-btn');
-    if (downloadBtn) {
-        const billId = downloadBtn.dataset.id;
-        showSpinner();
-        try {
-            const billDoc = await db.collection('bills').doc(billId).get();
-            const bill = billDoc.data();
-            const residentDoc = await db.collection('residents').doc(bill.residentId).get();
-            const resident = residentDoc.data();
-
-            let previousBalance = 0;
-            const allBillsSnapshot = await db.collection('bills')
-                .where('residentId', '==', bill.residentId)
-                .get();
-
-            allBillsSnapshot.forEach(doc => {
-                const prevBill = doc.data();
-                if (prevBill.status === 'Pendiente' && prevBill.dueDate.seconds < bill.dueDate.seconds) {
-                    previousBalance += prevBill.amount;
-                }
-            });
-
-            const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0,
