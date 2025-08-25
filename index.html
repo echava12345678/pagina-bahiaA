@@ -186,6 +186,9 @@
                         <button id="show-admin-payments-btn" class="btn secondary-btn"><i class="fas fa-eye"></i> Ver historial de pagos</button>
                     </div>
                     <div id="admin-payments-section" class="table-container hidden">
+                        <div class="filter-controls">
+            <input type="text" id="resident-bill-search" class="search-input" placeholder="Buscar por concepto, monto, o estado...">
+        </div>
                         <table id="admin-payments-table">
                             <thead>
                                 <tr>
@@ -210,12 +213,15 @@
                         <h3 id="modal-title">Historial de Facturas</h3>
                         <div class="modal-body">
                             <div class="filter-controls">
+            <input type="text" id="resident-bill-search" class="search-input" placeholder="Buscar por concepto, monto, o estado...">
+        </div>
+<!--                             <div class="filter-controls">
                                 <label for="modal-start-date">Desde:</label>
                                 <input type="date" id="modal-start-date">
                                 <label for="modal-end-date">Hasta:</label>
                                 <input type="date" id="modal-end-date">
                                 <button id="modal-filter-btn" class="btn primary-btn">Buscar</button>
-                            </div>
+                            </div> -->
                             <table id="bill-history-table">
                                 <thead>
                                     <tr>
