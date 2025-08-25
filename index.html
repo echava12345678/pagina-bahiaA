@@ -209,6 +209,13 @@
                         <span class="close-btn">&times;</span>
                         <h3 id="modal-title">Historial de Facturas</h3>
                         <div class="modal-body">
+                            <div class="filter-controls">
+                                <label for="modal-start-date">Desde:</label>
+                                <input type="date" id="modal-start-date">
+                                <label for="modal-end-date">Hasta:</label>
+                                <input type="date" id="modal-end-date">
+                                <button id="modal-filter-btn" class="btn primary-btn">Buscar</button>
+                            </div>
                             <table id="bill-history-table">
                                 <thead>
                                     <tr>
@@ -294,6 +301,13 @@
             <section class="resident-section">
                 <h2 class="section-title"><i class="fas fa-file-invoice"></i> Mis Facturas</h2>
                 <div class="table-container">
+                    <div class="filter-controls">
+                        <label for="resident-start-date">Desde:</label>
+                        <input type="date" id="resident-start-date">
+                        <label for="resident-end-date">Hasta:</label>
+                        <input type="date" id="resident-end-date">
+                        <button id="resident-filter-btn" class="btn primary-btn">Buscar</button>
+                    </div>
                     <table id="resident-bills-table">
                         <thead>
                             <tr>
