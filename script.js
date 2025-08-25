@@ -600,7 +600,7 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                 }
             });
             
-            // --- Lógica Corregida ---
+            // --- Lógica Corregida para cálculo de Saldo Anterior y Saldo a Favor ---
             const finalPreviousBalance = previousBalance - accumulatedCredit;
             const saldoAFavorFinal = Math.max(0, -finalPreviousBalance);
             const saldoAnteriorAjustado = Math.max(0, finalPreviousBalance);
@@ -619,11 +619,11 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
             const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            // --- Lógica Corregida ---
-            const totalToPay = saldoAnteriorAjustado + totalDueThisMonth - paidThisMonth;
-            const finalAmount = Math.max(0, totalToPay);
-            let finalCredit = paidThisMonth - (saldoAnteriorAjustado + totalDueThisMonth);
-            finalCredit = Math.max(0, finalCredit);
+            // --- Lógica Corregida para calcular el Total a Pagar y el Saldo a Favor final ---
+            const totalOwed = saldoAnteriorAjustado + totalDueThisMonth;
+            const totalPaid = paidThisMonth + saldoAFavorFinal;
+            const finalAmount = Math.max(0, totalOwed - totalPaid);
+            const finalCredit = Math.max(0, totalPaid - totalOwed);
             // --- Fin Lógica Corregida ---
             
             const receiptContent = `
@@ -805,7 +805,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                 }
             });
 
-            // --- Lógica Corregida ---
+            // --- Lógica Corregida para cálculo de Saldo Anterior y Saldo a Favor ---
             const finalPreviousBalance = previousBalance - accumulatedCredit;
             const saldoAFavorFinal = Math.max(0, -finalPreviousBalance);
             const saldoAnteriorAjustado = Math.max(0, finalPreviousBalance);
@@ -823,11 +823,11 @@ billHistoryModal.addEventListener('click', async (e) => {
             const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            // --- Lógica Corregida ---
-            const totalToPay = saldoAnteriorAjustado + totalDueThisMonth - paidThisMonth;
-            const finalAmount = Math.max(0, totalToPay);
-            let finalCredit = paidThisMonth - (saldoAnteriorAjustado + totalDueThisMonth);
-            finalCredit = Math.max(0, finalCredit);
+            // --- Lógica Corregida para calcular el Total a Pagar y el Saldo a Favor final ---
+            const totalOwed = saldoAnteriorAjustado + totalDueThisMonth;
+            const totalPaid = paidThisMonth + saldoAFavorFinal;
+            const finalAmount = Math.max(0, totalOwed - totalPaid);
+            const finalCredit = Math.max(0, totalPaid - totalOwed);
             // --- Fin Lógica Corregida ---
 
             const receiptContent = `
@@ -1159,7 +1159,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             previousBills.forEach(prevBill => {
                 const dueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
                 const isLate = (prevBill.status === 'Pendiente' && new Date() > dueDate) ||
-                    (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
+                    (prev.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
                 const multa = isLate ? prevBill.amount * 0.015 : 0;
                 
                 const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
@@ -1171,7 +1171,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                 }
             });
             
-            // --- Lógica Corregida ---
+            // --- Lógica Corregida para cálculo de Saldo Anterior y Saldo a Favor ---
             const finalPreviousBalance = previousBalance - accumulatedCredit;
             const saldoAFavorFinal = Math.max(0, -finalPreviousBalance);
             const saldoAnteriorAjustado = Math.max(0, finalPreviousBalance);
@@ -1189,11 +1189,11 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            // --- Lógica Corregida ---
-            const totalToPay = saldoAnteriorAjustado + totalDueThisMonth - paidThisMonth;
-            const finalAmount = Math.max(0, totalToPay);
-            let finalCredit = paidThisMonth - (saldoAnteriorAjustado + totalDueThisMonth);
-            finalCredit = Math.max(0, finalCredit);
+            // --- Lógica Corregida para calcular el Total a Pagar y el Saldo a Favor final ---
+            const totalOwed = saldoAnteriorAjustado + totalDueThisMonth;
+            const totalPaid = paidThisMonth + saldoAFavorFinal;
+            const finalAmount = Math.max(0, totalOwed - totalPaid);
+            const finalCredit = Math.max(0, totalPaid - totalOwed);
             // --- Fin Lógica Corregida ---
 
             const receiptContent = `
