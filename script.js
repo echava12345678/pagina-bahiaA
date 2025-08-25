@@ -578,22 +578,30 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
 
             const allBills = allBillsSnapshot.docs.map(doc => ({
                 ...doc.data(),
-                createdAt: doc.data().createdAt?.seconds || 0
+                createdAt: doc.data().createdAt?.seconds || 0,
+                id: doc.id
             }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
-            allBills.forEach(prevBill => {
-                if (prevBill.createdAt < bill.createdAt.seconds) {
-                    if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            accumulatedCredit += credit;
-                        }
-                    }
+            const previousBills = allBills.filter(prevBill => prevBill.createdAt < bill.createdAt.seconds);
+
+            previousBills.forEach(prevBill => {
+                const dueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
+                const isLate = (prevBill.status === 'Pendiente' && new Date() > dueDate) ||
+                    (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
+                const multa = isLate ? prevBill.amount * 0.015 : 0;
+                
+                const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
+
+                if (unpaidAmount > 0) {
+                    previousBalance += unpaidAmount;
+                } else if (unpaidAmount < 0) {
+                    accumulatedCredit += Math.abs(unpaidAmount);
                 }
             });
+
+            const adjustedPreviousBalance = Math.max(0, previousBalance - accumulatedCredit);
+            const saldoAFavorFinal = Math.max(0, accumulatedCredit - previousBalance);
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -604,18 +612,13 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                 (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
 
             const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDue = bill.amount + previousBalance + multa;
+            const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            let finalAmount = totalDue - paidThisMonth;
-            let currentCredit = 0;
+            const totalToPay = adjustedPreviousBalance + totalDueThisMonth - paidThisMonth;
 
-            if (finalAmount < 0) {
-                currentCredit = Math.abs(finalAmount);
-                finalAmount = 0;
-            }
-
-            let saldoAFavorFinal = accumulatedCredit + currentCredit;
+            let finalAmount = Math.max(0, totalToPay);
+            let finalCredit = Math.max(0, paidThisMonth - (adjustedPreviousBalance + totalDueThisMonth));
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -666,9 +669,9 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance + bill.amount)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
@@ -679,7 +682,7 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(finalCredit)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
@@ -774,22 +777,30 @@ billHistoryModal.addEventListener('click', async (e) => {
 
             const allBills = allBillsSnapshot.docs.map(doc => ({
                 ...doc.data(),
-                createdAt: doc.data().createdAt?.seconds || 0
+                createdAt: doc.data().createdAt?.seconds || 0,
+                id: doc.id
             }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
-            allBills.forEach(prevBill => {
-                if (prevBill.createdAt < bill.createdAt.seconds) {
-                    if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            accumulatedCredit += credit;
-                        }
-                    }
+            const previousBills = allBills.filter(prevBill => prevBill.createdAt < bill.createdAt.seconds);
+
+            previousBills.forEach(prevBill => {
+                const dueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
+                const isLate = (prevBill.status === 'Pendiente' && new Date() > dueDate) ||
+                    (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
+                const multa = isLate ? prevBill.amount * 0.015 : 0;
+                
+                const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
+
+                if (unpaidAmount > 0) {
+                    previousBalance += unpaidAmount;
+                } else if (unpaidAmount < 0) {
+                    accumulatedCredit += Math.abs(unpaidAmount);
                 }
             });
+
+            const adjustedPreviousBalance = Math.max(0, previousBalance - accumulatedCredit);
+            const saldoAFavorFinal = Math.max(0, accumulatedCredit - previousBalance);
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -800,18 +811,13 @@ billHistoryModal.addEventListener('click', async (e) => {
                 (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
 
             const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDue = bill.amount + previousBalance + multa;
+            const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            let finalAmount = totalDue - paidThisMonth;
-            let currentCredit = 0;
+            const totalToPay = adjustedPreviousBalance + totalDueThisMonth - paidThisMonth;
 
-            if (finalAmount < 0) {
-                currentCredit = Math.abs(finalAmount);
-                finalAmount = 0;
-            }
-
-            let saldoAFavorFinal = accumulatedCredit + currentCredit;
+            let finalAmount = Math.max(0, totalToPay);
+            let finalCredit = Math.max(0, paidThisMonth - (adjustedPreviousBalance + totalDueThisMonth));
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -857,14 +863,14 @@ billHistoryModal.addEventListener('click', async (e) => {
                         <tr style="background-color: #f2f2f2;">
                             <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
+                            <th style="padding: 8px; border: 1px solid #000; text-align: right; width: 20%;">ESTE MES</th>
+                            <th style="padding: 8px; border: 1px solid #000; text-align: right; width: 20%;">A PAGAR</th>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance + bill.amount)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
@@ -875,7 +881,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(finalCredit)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
@@ -1132,22 +1138,30 @@ residentBillsTableBody.addEventListener('click', async (e) => {
 
             const allBills = allBillsSnapshot.docs.map(doc => ({
                 ...doc.data(),
-                createdAt: doc.data().createdAt?.seconds || 0
+                createdAt: doc.data().createdAt?.seconds || 0,
+                id: doc.id
             }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
-            allBills.forEach(prevBill => {
-                if (prevBill.createdAt < bill.createdAt.seconds) {
-                    if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            accumulatedCredit += credit;
-                        }
-                    }
+            const previousBills = allBills.filter(prevBill => prevBill.createdAt < bill.createdAt.seconds);
+
+            previousBills.forEach(prevBill => {
+                const dueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
+                const isLate = (prevBill.status === 'Pendiente' && new Date() > dueDate) ||
+                    (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
+                const multa = isLate ? prevBill.amount * 0.015 : 0;
+                
+                const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
+
+                if (unpaidAmount > 0) {
+                    previousBalance += unpaidAmount;
+                } else if (unpaidAmount < 0) {
+                    accumulatedCredit += Math.abs(unpaidAmount);
                 }
             });
+
+            const adjustedPreviousBalance = Math.max(0, previousBalance - accumulatedCredit);
+            const saldoAFavorFinal = Math.max(0, accumulatedCredit - previousBalance);
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -1158,18 +1172,13 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                 (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
 
             const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDue = bill.amount + previousBalance + multa;
+            const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            let finalAmount = totalDue - paidThisMonth;
-            let currentCredit = 0;
+            const totalToPay = adjustedPreviousBalance + totalDueThisMonth - paidThisMonth;
 
-            if (finalAmount < 0) {
-                currentCredit = Math.abs(finalAmount);
-                finalAmount = 0;
-            }
-
-            let saldoAFavorFinal = accumulatedCredit + currentCredit;
+            let finalAmount = Math.max(0, totalToPay);
+            let finalCredit = Math.max(0, paidThisMonth - (adjustedPreviousBalance + totalDueThisMonth));
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -1220,9 +1229,9 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(previousBalance + bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance + bill.amount)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
@@ -1233,7 +1242,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(finalCredit)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
                     </table>
