@@ -78,7 +78,7 @@ function hideSpinner() {
 // Función para mostrar/ocultar secciones de formularios y tablas
 function toggleSection(sectionIdToShow) {
     const sections = [
-        addResidentFormSection, addBillFormSection, uploadBillsSection, 
+        addResidentFormSection, addBillFormSection, uploadBillsSection,
         changeCredentialsForm, adminPaymentsSection,
         billListSection
     ];
@@ -470,7 +470,7 @@ async function showBillHistory(residentId) {
         modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
 
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
-        
+
         const bills = billsSnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -524,7 +524,7 @@ async function loadAdminPayments() {
     try {
         const billsSnapshot = await db.collection('bills').get();
         const paidBills = billsSnapshot.docs.filter(doc => doc.data().status === 'Pagada');
-        
+
         if (paidBills.length === 0) {
             adminPaymentsTableBody.innerHTML = `<tr><td colspan="7">No se encontraron pagos registrados.</td></tr>`;
         } else {
@@ -590,7 +590,7 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                 const isLate = (prevBill.status === 'Pendiente' && new Date() > dueDate) ||
                     (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
                 const multa = isLate ? prevBill.amount * 0.015 : 0;
-                
+
                 const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
 
                 if (unpaidAmount > 0) {
@@ -599,7 +599,7 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                     accumulatedCredit += Math.abs(unpaidAmount);
                 }
             });
-            
+
             // --- Lógica Corregida para cálculo de Saldo Anterior y Saldo a Favor ---
             const finalPreviousBalance = previousBalance - accumulatedCredit;
             const saldoAFavorFinal = Math.max(0, -finalPreviousBalance);
@@ -625,7 +625,7 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
             const finalAmount = Math.max(0, totalOwed - totalPaid);
             const finalCredit = Math.max(0, totalPaid - totalOwed);
             // --- Fin Lógica Corregida ---
-            
+
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -795,7 +795,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                 const isLate = (prevBill.status === 'Pendiente' && new Date() > dueDate) ||
                     (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
                 const multa = isLate ? prevBill.amount * 0.015 : 0;
-                
+
                 const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
 
                 if (unpaidAmount > 0) {
@@ -1097,6 +1097,7 @@ async function loadResidentBills(residentId) {
             billsSnapshot.forEach(doc => {
                 const bill = doc.data();
                 const today = new Date();
+                // Normaliza la fecha de vencimiento a solo día, mes y año
                 const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
                 if (dueDate) {
                     dueDate.setHours(0, 0, 0, 0);
@@ -1105,6 +1106,7 @@ async function loadResidentBills(residentId) {
 
                 const row = residentBillsTableBody.insertRow();
                 row.dataset.id = doc.id;
+                // FIX: Agregadas las columnas de monto y fecha de pago para igualar la vista de admin
                 row.innerHTML = `
                     <td>${bill.concept}</td>
                     <td>${formatCurrency(bill.amount)}</td>
@@ -1149,8 +1151,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
 
             const allBills = allBillsSnapshot.docs.map(doc => ({
                 ...doc.data(),
-                createdAt: doc.data().createdAt?.seconds || 0,
-                id: doc.id
+                createdAt: doc.data().createdAt?.seconds || 0
             }));
             allBills.sort((a, b) => a.createdAt - b.createdAt);
 
@@ -1158,10 +1159,11 @@ residentBillsTableBody.addEventListener('click', async (e) => {
 
             previousBills.forEach(prevBill => {
                 const dueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
+                // FIX: Corregido el nombre de la variable de 'prev' a 'prevBill'
                 const isLate = (prevBill.status === 'Pendiente' && new Date() > dueDate) ||
-                    (prev.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
+                    (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
                 const multa = isLate ? prevBill.amount * 0.015 : 0;
-                
+
                 const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
 
                 if (unpaidAmount > 0) {
@@ -1170,12 +1172,11 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                     accumulatedCredit += Math.abs(unpaidAmount);
                 }
             });
-            
-            // --- Lógica Corregida para cálculo de Saldo Anterior y Saldo a Favor ---
+
+            // FIX: Lógica de cálculo corregida para el PDF (restaurada la lógica anterior)
             const finalPreviousBalance = previousBalance - accumulatedCredit;
             const saldoAFavorFinal = Math.max(0, -finalPreviousBalance);
             const saldoAnteriorAjustado = Math.max(0, finalPreviousBalance);
-            // --- Fin Lógica Corregida ---
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -1189,12 +1190,10 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            // --- Lógica Corregida para calcular el Total a Pagar y el Saldo a Favor final ---
             const totalOwed = saldoAnteriorAjustado + totalDueThisMonth;
             const totalPaid = paidThisMonth + saldoAFavorFinal;
             const finalAmount = Math.max(0, totalOwed - totalPaid);
             const finalCredit = Math.max(0, totalPaid - totalOwed);
-            // --- Fin Lógica Corregida ---
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
