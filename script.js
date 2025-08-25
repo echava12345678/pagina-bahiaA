@@ -55,6 +55,11 @@ const adminPaymentsSection = document.getElementById('admin-payments-section');
 const adminPaymentsTableBody = document.querySelector('#admin-payments-table tbody');
 const billListSection = document.getElementById('bill-list-section');
 
+// Nuevo DOM del filtro de residente
+const residentFilterBtn = document.getElementById('resident-filter-btn');
+const startDateInput = document.getElementById('start-date');
+const endDateInput = document.getElementById('end-date');
+
 
 // Global variables
 let currentResidentId = null;
@@ -1110,11 +1115,24 @@ changeCredentialsFormInner.addEventListener('submit', async (e) => {
 
 // --- Resident Panel Functions ---
 
-async function loadResidentBills(residentId) {
+async function loadResidentBills(residentId, startDate = null, endDate = null) {
     showSpinner();
     residentBillsTableBody.innerHTML = '';
     try {
-        const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
+        let query = db.collection('bills').where('residentId', '==', residentId);
+        
+        // CÓDIGO AÑADIDO: Filtro por rango de fechas
+        if (startDate) {
+            const startTimestamp = firebase.firestore.Timestamp.fromDate(new Date(startDate));
+            query = query.where('dueDate', '>=', startTimestamp);
+        }
+        if (endDate) {
+            const endTimestamp = firebase.firestore.Timestamp.fromDate(new Date(endDate));
+            query = query.where('dueDate', '<=', endTimestamp);
+        }
+
+        const billsSnapshot = await query.get();
+
         if (billsSnapshot.empty) {
             residentBillsTableBody.innerHTML = `<tr><td colspan="5">No se encontraron facturas pendientes.</td></tr>`;
         } else {
@@ -1153,7 +1171,7 @@ async function loadResidentBills(residentId) {
         hideSpinner();
     }
 }
-// CÓDIGO AÑADIDO: Filtro de búsqueda para el panel de residente
+// CÓDIGO AÑADIDO: Filtro de búsqueda por texto y fechas para el panel de residente
 const residentBillsSearch = document.createElement('input');
 residentBillsSearch.type = 'text';
 residentBillsSearch.id = 'resident-bills-search';
@@ -1175,6 +1193,12 @@ residentBillsSearch.addEventListener('input', (e) => {
             row.style.display = 'none';
         }
     });
+});
+
+residentFilterBtn.addEventListener('click', () => {
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+    loadResidentBills(currentResidentId, startDate, endDate);
 });
 // --- FIN DEL CÓDIGO AÑADIDO ---
 
