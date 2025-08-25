@@ -517,6 +517,32 @@ async function showBillHistory(residentId) {
     }
 }
 
+// CÓDIGO AÑADIDO: Filtro de búsqueda para facturas en el modal de admin
+const billSearchInput = document.createElement('input');
+billSearchInput.type = 'text';
+billSearchInput.id = 'bill-history-search';
+billSearchInput.placeholder = 'Buscar por concepto o estado...';
+billSearchInput.classList.add('search-input');
+const filterControlsDiv = document.querySelector('#bill-history-modal .filter-controls');
+if (filterControlsDiv) {
+    filterControlsDiv.insertBefore(billSearchInput, filterControlsDiv.firstChild);
+}
+
+billSearchInput.addEventListener('input', (e) => {
+    const filterText = e.target.value.toLowerCase();
+    const rows = billHistoryTableBody.querySelectorAll('tr');
+    rows.forEach(row => {
+        const concept = row.cells[3].textContent.toLowerCase();
+        const status = row.cells[4].textContent.toLowerCase();
+        if (concept.includes(filterText) || status.includes(filterText)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+// --- FIN DEL CÓDIGO AÑADIDO ---
+
 // Load and display ALL paid bills for admin panel
 async function loadAdminPayments() {
     showSpinner();
@@ -823,12 +849,10 @@ billHistoryModal.addEventListener('click', async (e) => {
             const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            // --- Lógica Corregida para calcular el Total a Pagar y el Saldo a Favor final ---
             const totalOwed = saldoAnteriorAjustado + totalDueThisMonth;
             const totalPaid = paidThisMonth + saldoAFavorFinal;
             const finalAmount = Math.max(0, totalOwed - totalPaid);
             const finalCredit = Math.max(0, totalPaid - totalOwed);
-            // --- Fin Lógica Corregida ---
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -1129,6 +1153,30 @@ async function loadResidentBills(residentId) {
         hideSpinner();
     }
 }
+// CÓDIGO AÑADIDO: Filtro de búsqueda para el panel de residente
+const residentBillsSearch = document.createElement('input');
+residentBillsSearch.type = 'text';
+residentBillsSearch.id = 'resident-bills-search';
+residentBillsSearch.placeholder = 'Buscar por concepto o estado...';
+residentBillsSearch.classList.add('search-input');
+const residentFilterControls = document.querySelector('#resident-panel .table-container .filter-controls');
+if (residentFilterControls) {
+    residentFilterControls.appendChild(residentBillsSearch);
+}
+residentBillsSearch.addEventListener('input', (e) => {
+    const filterText = e.target.value.toLowerCase();
+    const rows = residentBillsTableBody.querySelectorAll('tr');
+    rows.forEach(row => {
+        const concept = row.cells[0].textContent.toLowerCase();
+        const status = row.cells[5].textContent.toLowerCase();
+        if (concept.includes(filterText) || status.includes(filterText)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+// --- FIN DEL CÓDIGO AÑADIDO ---
 
 // Download receipt as PDF
 residentBillsTableBody.addEventListener('click', async (e) => {
