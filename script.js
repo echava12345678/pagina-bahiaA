@@ -599,9 +599,13 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                     accumulatedCredit += Math.abs(unpaidAmount);
                 }
             });
+            
+            // --- Lógica Corregida ---
+            const finalPreviousBalance = previousBalance - accumulatedCredit;
+            const saldoAFavorFinal = Math.max(0, -finalPreviousBalance);
+            const saldoAnteriorAjustado = Math.max(0, finalPreviousBalance);
+            // --- Fin Lógica Corregida ---
 
-            const adjustedPreviousBalance = Math.max(0, previousBalance - accumulatedCredit);
-            const saldoAFavorFinal = Math.max(0, accumulatedCredit - previousBalance);
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -615,11 +619,13 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
             const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            const totalToPay = adjustedPreviousBalance + totalDueThisMonth - paidThisMonth;
-
-            let finalAmount = Math.max(0, totalToPay);
-            let finalCredit = Math.max(0, paidThisMonth - (adjustedPreviousBalance + totalDueThisMonth));
-
+            // --- Lógica Corregida ---
+            const totalToPay = saldoAnteriorAjustado + totalDueThisMonth - paidThisMonth;
+            const finalAmount = Math.max(0, totalToPay);
+            let finalCredit = paidThisMonth - (saldoAnteriorAjustado + totalDueThisMonth);
+            finalCredit = Math.max(0, finalCredit);
+            // --- Fin Lógica Corregida ---
+            
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -664,14 +670,14 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                         <tr style="background-color: #f2f2f2;">
                             <th style="padding: 8px; text-align: left; border: 1px solid #000; width: 40%;">CONCEPTO</th>
                             <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">SALDO ANT</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">ESTE MES</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #000; width: 20%;">A PAGAR</th>
+                            <th style="padding: 8px; border: 1px solid #000; text-align: right; width: 20%;">ESTE MES</th>
+                            <th style="padding: 8px; border: 1px solid #000; text-align: right; width: 20%;">A PAGAR</th>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAnteriorAjustado)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance + bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAnteriorAjustado + bill.amount)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
@@ -799,8 +805,11 @@ billHistoryModal.addEventListener('click', async (e) => {
                 }
             });
 
-            const adjustedPreviousBalance = Math.max(0, previousBalance - accumulatedCredit);
-            const saldoAFavorFinal = Math.max(0, accumulatedCredit - previousBalance);
+            // --- Lógica Corregida ---
+            const finalPreviousBalance = previousBalance - accumulatedCredit;
+            const saldoAFavorFinal = Math.max(0, -finalPreviousBalance);
+            const saldoAnteriorAjustado = Math.max(0, finalPreviousBalance);
+            // --- Fin Lógica Corregida ---
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -814,10 +823,12 @@ billHistoryModal.addEventListener('click', async (e) => {
             const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            const totalToPay = adjustedPreviousBalance + totalDueThisMonth - paidThisMonth;
-
-            let finalAmount = Math.max(0, totalToPay);
-            let finalCredit = Math.max(0, paidThisMonth - (adjustedPreviousBalance + totalDueThisMonth));
+            // --- Lógica Corregida ---
+            const totalToPay = saldoAnteriorAjustado + totalDueThisMonth - paidThisMonth;
+            const finalAmount = Math.max(0, totalToPay);
+            let finalCredit = paidThisMonth - (saldoAnteriorAjustado + totalDueThisMonth);
+            finalCredit = Math.max(0, finalCredit);
+            // --- Fin Lógica Corregida ---
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -868,9 +879,9 @@ billHistoryModal.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAnteriorAjustado)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance + bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAnteriorAjustado + bill.amount)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
@@ -1159,9 +1170,12 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                     accumulatedCredit += Math.abs(unpaidAmount);
                 }
             });
-
-            const adjustedPreviousBalance = Math.max(0, previousBalance - accumulatedCredit);
-            const saldoAFavorFinal = Math.max(0, accumulatedCredit - previousBalance);
+            
+            // --- Lógica Corregida ---
+            const finalPreviousBalance = previousBalance - accumulatedCredit;
+            const saldoAFavorFinal = Math.max(0, -finalPreviousBalance);
+            const saldoAnteriorAjustado = Math.max(0, finalPreviousBalance);
+            // --- Fin Lógica Corregida ---
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
@@ -1175,10 +1189,12 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const totalDueThisMonth = bill.amount + multa;
             const paidThisMonth = bill.paidAmount || 0;
 
-            const totalToPay = adjustedPreviousBalance + totalDueThisMonth - paidThisMonth;
-
-            let finalAmount = Math.max(0, totalToPay);
-            let finalCredit = Math.max(0, paidThisMonth - (adjustedPreviousBalance + totalDueThisMonth));
+            // --- Lógica Corregida ---
+            const totalToPay = saldoAnteriorAjustado + totalDueThisMonth - paidThisMonth;
+            const finalAmount = Math.max(0, totalToPay);
+            let finalCredit = paidThisMonth - (saldoAnteriorAjustado + totalDueThisMonth);
+            finalCredit = Math.max(0, finalCredit);
+            // --- Fin Lógica Corregida ---
 
             const receiptContent = `
                 <div style="font-family: 'Poppins', sans-serif; padding: 20px; color: #333; max-width: 700px; margin: auto; font-size: 12px;">
@@ -1229,9 +1245,9 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">${bill.concept}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAnteriorAjustado)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.amount)}</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(adjustedPreviousBalance + bill.amount)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAnteriorAjustado + bill.amount)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">INTERESES</td>
