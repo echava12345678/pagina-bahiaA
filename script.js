@@ -130,7 +130,7 @@ loginForm.addEventListener('submit', async (e) => {
     showSpinner();
 
     try {
-        if (username === 'admin' && password === 'admin123') { // Simple admin check
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   if (username === 'admin' && password === 'admin123') { // Simple admin check
             showPage(adminPanel);
             loadResidents();
             auth.signInWithEmailAndPassword('admin@edificio.com', password) // Use a static email for Firebase auth
