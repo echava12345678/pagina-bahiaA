@@ -1116,7 +1116,7 @@ async function loadResidentBills(residentId, startDate = null, endDate = null) {
     showSpinner();
     residentBillsTableBody.innerHTML = '';
     try {
-        let query = db.collection('bills').where('residentId', '==', residentId).orderBy('dueDate', 'asc');
+        let query = db.collection('bills').where('residentId', '==', residentId);
         
         // CÓDIGO AÑADIDO: Filtro por rango de fechas
         if (startDate) {
