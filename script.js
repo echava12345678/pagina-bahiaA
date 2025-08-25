@@ -550,7 +550,7 @@ async function loadAdminPayments() {
     showSpinner();
     adminPaymentsTableBody.innerHTML = '';
     try {
-        const billsSnapshot = await db.collection('bills').get();
+        const billsSnapshot = await db.collection('bills').orderBy('dueDate', 'asc').get();
         const paidBills = billsSnapshot.docs.filter(doc => doc.data().status === 'Pagada');
 
         if (paidBills.length === 0) {
