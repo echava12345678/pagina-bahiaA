@@ -800,6 +800,7 @@ if (sendEmailBtn) {
         alert('Error al enviar el correo.');
     } finally {
         hideSpinner();
+    }
     } else if (editBtn) {
         const billId = editBtn.dataset.id;
         showEditBillModal(billId);
