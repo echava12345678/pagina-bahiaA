@@ -237,6 +237,9 @@ async function loadResidents() {
                     <button class="btn logout-btn delete-resident-btn" data-id="${doc.id}">
                         <i class="fas fa-trash-alt"></i> Eliminar
                     </button>
+                    <button class="btn secondary-btn send-email-btn" data-id="${doc.id}">
+                        <i class="fas fa-envelope"></i> Enviar Correo
+                    </button>
                 </td>
                 <td>Descarga los recibos en "Ver facturas"</td>
             `;
@@ -253,6 +256,7 @@ async function loadResidents() {
 residentsTableBody.addEventListener('click', (e) => {
     const viewBtn = e.target.closest('.view-bills-btn');
     const deleteBtn = e.target.closest('.delete-resident-btn');
+    const sendEmailBtn = e.target.closest('.send-email-btn');
 
     if (viewBtn) {
         const residentId = viewBtn.dataset.id;
@@ -263,6 +267,9 @@ residentsTableBody.addEventListener('click', (e) => {
         if (confirm('¿Estás seguro de que quieres eliminar a este residente y todas sus facturas?')) {
             deleteResident(residentId);
         }
+    } else if (sendEmailBtn) {
+        const residentId = sendEmailBtn.dataset.id;
+        sendEmailToResident(residentId);
     }
 });
 
@@ -334,6 +341,29 @@ async function sendEmail(recipientEmail, subject, body) {
         console.error('Error al enviar el email:', error);
         alert(`Error al enviar el email: ${error.message}`);
         return false;
+    }
+}
+
+async function sendEmailToResident(residentId) {
+    showSpinner();
+    try {
+        const residentDoc = await db.collection('residents').doc(residentId).get();
+        if (residentDoc.exists) {
+            const resident = residentDoc.data();
+            const emailSubject = `Recordatorio de Recibo`;
+            const emailBody = `Hola ${resident.name},\n\nTe recordamos que hay un nuevo recibo disponible en tu perfil. Por favor, ingresa a la aplicación para revisarlo.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
+            const emailSent = await sendEmail(resident.email, emailSubject, emailBody);
+            if (emailSent) {
+                alert('Correo de recordatorio enviado exitosamente.');
+            }
+        } else {
+            alert('No se encontró al residente para enviar la notificación.');
+        }
+    } catch (err) {
+        console.error("Error sending email:", err);
+        alert('Error al enviar el correo.');
+    } finally {
+        hideSpinner();
     }
 }
 // --- FIN DE LA FUNCIÓN AÑADIDA ---
