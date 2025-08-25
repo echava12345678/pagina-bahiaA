@@ -479,11 +479,8 @@ async function showBillHistory(residentId) {
         const bills = billsSnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-        })).sort((a, b) => {
-            const dateA = a.createdAt ? a.createdAt.seconds : 0;
-            const dateB = b.createdAt ? b.createdAt.seconds : 0;
-            return dateA - dateB;
-        });
+        })). // Ordenar las facturas por fecha de vencimiento (dueDate) de menor a mayor
+        bills.sort((a, b) => a.dueDate.seconds - b.dueDate.seconds);
 
         if (bills.length === 0) {
             billHistoryTableBody.innerHTML = `<tr><td colspan="8">No se encontraron facturas para este residente.</td></tr>`;
