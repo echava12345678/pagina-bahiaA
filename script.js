@@ -775,8 +775,32 @@ billHistoryModal.addEventListener('click', async (e) => {
     const editBtn = e.target.closest('.edit-bill-btn');
     const deleteBtn = e.target.closest('.delete-bill-btn');
     const downloadBtn = e.target.closest('.download-receipt-btn');
+    const sendEmailBtn = e.target.closest('.send-email-btn');
 
-    if (editBtn) {
+if (sendEmailBtn) {
+    const billId = sendEmailBtn.dataset.id;
+    showSpinner();
+    try {
+        const billDoc = await db.collection('bills').doc(billId).get();
+        const bill = billDoc.data();
+        const residentDoc = await db.collection('residents').doc(bill.residentId).get();
+
+        if (residentDoc.exists) {
+            const resident = residentDoc.data();
+            const emailSubject = `Recordatorio de Factura: ${bill.concept}`;
+            const emailBody = `Hola ${resident.name},\n\nEste es un recordatorio de tu factura por el concepto de ${bill.concept} con un valor de ${formatCurrency(bill.amount)}, que vence el ${formatDate(bill.dueDate)}.\n\nPor favor, ingresa a tu perfil para ver los detalles completos y realizar el pago.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
+
+            await sendEmail(resident.email, emailSubject, emailBody);
+        } else {
+            alert('No se encontró el residente para enviar el correo.');
+        }
+
+    } catch (err) {
+        console.error("Error sending email:", err);
+        alert('Error al enviar el correo.');
+    } finally {
+        hideSpinner();
+    } else if (editBtn) {
         const billId = editBtn.dataset.id;
         showEditBillModal(billId);
     } else if (deleteBtn) {
