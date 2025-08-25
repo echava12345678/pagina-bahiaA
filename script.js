@@ -506,6 +506,9 @@ async function showBillHistory(residentId) {
                         <button class="btn primary-btn download-receipt-btn" data-id="${bill.id}">
                             <i class="fas fa-file-download"></i>
                         </button>
+                        <button class="btn primary-btn send-email-btn" data-id="${bill.id}">
+            <i class="fas fa-envelope"></i>
+        </button>
                     </td>
                 `;
             });
