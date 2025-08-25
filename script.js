@@ -49,6 +49,16 @@ const credentialsError = document.getElementById('credentials-error');
 const credentialsSuccess = document.getElementById('credentials-success');
 const loadingSpinner = document.getElementById('loading-spinner');
 
+// Nuevo DOM
+const showAdminPaymentsBtn = document.getElementById('show-admin-payments-btn');
+const adminPaymentsSection = document.getElementById('admin-payments-section');
+const adminPaymentsTableBody = document.querySelector('#admin-payments-table tbody');
+const showResidentPaymentsBtn = document.getElementById('show-resident-payments-btn');
+const residentPaymentsSection = document.getElementById('resident-payments-section');
+const residentPaymentsTableBody = document.querySelector('#resident-payments-table tbody');
+const billListSection = document.getElementById('bill-list-section');
+
+
 // Global variables
 let currentResidentId = null;
 
@@ -68,9 +78,13 @@ function hideSpinner() {
     loadingSpinner.style.display = 'none';
 }
 
-// Función para mostrar/ocultar secciones de formularios
+// Función para mostrar/ocultar secciones de formularios y tablas
 function toggleSection(sectionIdToShow) {
-    const sections = [addResidentFormSection, addBillFormSection, uploadBillsSection, changeCredentialsForm];
+    const sections = [
+        addResidentFormSection, addBillFormSection, uploadBillsSection, 
+        changeCredentialsForm, adminPaymentsSection, residentPaymentsSection,
+        billListSection
+    ];
     sections.forEach(section => {
         if (section && section.id === sectionIdToShow) {
             section.classList.toggle('hidden');
@@ -79,6 +93,7 @@ function toggleSection(sectionIdToShow) {
         }
     });
 }
+
 
 function formatDate(timestamp) {
     if (!timestamp || !timestamp.seconds) return '';
@@ -162,10 +177,12 @@ residentLogoutBtn.addEventListener('click', () => {
 // --- Admin Panel Functions ---
 
 // Event listeners para mostrar formularios
-showAddResidentBtn.addEventListener('click', () => toggleSection('add-resident-form'));
-showAddBillBtn.addEventListener('click', () => toggleSection('add-bill-form'));
-showUploadBillsBtn.addEventListener('click', () => toggleSection('upload-bills-section'));
-showChangePasswordBtn.addEventListener('click', () => toggleSection('change-credentials-form'));
+showAddResidentBtn.addEventListener('click', () => { toggleSection('add-resident-form'); billListSection.classList.remove('hidden'); });
+showAddBillBtn.addEventListener('click', () => { toggleSection('add-bill-form'); billListSection.classList.remove('hidden'); });
+showUploadBillsBtn.addEventListener('click', () => { toggleSection('upload-bills-section'); billListSection.classList.remove('hidden'); });
+showChangePasswordBtn.addEventListener('click', () => { toggleSection('change-credentials-form'); billListSection.classList.remove('hidden'); });
+showAdminPaymentsBtn.addEventListener('click', () => { toggleSection('admin-payments-section'); loadAdminPayments(); });
+
 
 // Resident CRUD operations
 residentForm.addEventListener('submit', async (e) => {
@@ -184,7 +201,9 @@ residentForm.addEventListener('submit', async (e) => {
             username,
             password,
             initialPassword: password,
-            credentialsChanged: false
+            credentialsChanged: false,
+            // Nuevo campo para el saldo acumulado
+            balance: 0 
         });
         alert('Residente agregado exitosamente.');
         residentForm.reset();
@@ -304,17 +323,36 @@ billForm.addEventListener('submit', async (e) => {
     try {
         const localDueDate = new Date(dueDate);
         const localPaymentDate = paymentDate ? new Date(paymentDate) : null;
+        
+        // Obtener el saldo actual del residente
+        const residentDocRef = db.collection('residents').doc(residentId);
+        const residentDoc = await residentDocRef.get();
+        const currentBalance = residentDoc.data().balance || 0;
 
-        await db.collection('bills').add({
-            residentId,
-            dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
-            amount,
-            concept,
-            status,
-            paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
-            paidAmount: paidAmount,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        let newBalance = currentBalance;
+        if (status === 'Pagada') {
+            newBalance = newBalance + (paidAmount - amount);
+        } else if (status === 'Pendiente') {
+            newBalance = newBalance - amount;
+        }
+
+        const billRef = db.collection('bills').doc();
+
+        await db.runTransaction(async (transaction) => {
+            transaction.set(billRef, {
+                residentId,
+                dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
+                amount,
+                concept,
+                status,
+                paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
+                paidAmount: paidAmount,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            // Actualizar el saldo del residente
+            transaction.update(residentDocRef, { balance: newBalance });
         });
+
         alert('Factura agregada exitosamente.');
         billForm.reset();
         loadResidents();
@@ -326,6 +364,7 @@ billForm.addEventListener('submit', async (e) => {
         toggleSection(null); // Ocultar todos los formularios
     }
 });
+
 
 // Handle Excel file upload
 excelFile.addEventListener('change', async (e) => {
@@ -407,10 +446,10 @@ async function showBillHistory(residentId) {
         const resident = residentDoc.data();
         modalTitle.textContent = `Facturas de ${resident.name} (Depto: ${resident.depto})`;
         
-        // FIX: Se obtiene la lista completa de facturas sin ordenar
+        // Se obtiene la lista completa de facturas sin ordenar
         const billsSnapshot = await db.collection('bills').where('residentId', '==', residentId).get();
         
-        // FIX: Se ordenan los documentos localmente por la fecha de creación
+        // Se ordenan los documentos localmente por la fecha de creación
         const bills = billsSnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -458,6 +497,43 @@ async function showBillHistory(residentId) {
 }
 
 
+// Load and display ALL paid bills for admin panel
+async function loadAdminPayments() {
+    showSpinner();
+    adminPaymentsTableBody.innerHTML = '';
+    try {
+        // Trae todas las facturas y filtra localmente para evitar el error de índice
+        const billsSnapshot = await db.collection('bills').get();
+        const paidBills = billsSnapshot.docs.filter(doc => doc.data().status === 'Pagada');
+        
+        if (paidBills.length === 0) {
+            adminPaymentsTableBody.innerHTML = `<tr><td colspan="7">No se encontraron pagos registrados.</td></tr>`;
+        } else {
+            for (const doc of paidBills) {
+                const bill = doc.data();
+                const residentDoc = await db.collection('residents').doc(bill.residentId).get();
+                const resident = residentDoc.data();
+
+                const row = adminPaymentsTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${resident.depto} - ${resident.name}</td>
+                    <td>${formatDate(bill.paymentDate)}</td>
+                    <td>${formatCurrency(bill.paidAmount || 0)}</td>
+                    <td>${bill.concept}</td>
+                    <td>${formatDate(bill.dueDate)}</td>
+                    <td>${bill.status}</td>
+                `;
+            }
+        }
+    } catch (err) {
+        console.error("Error loading admin payments:", err);
+        alert('Error al cargar el historial de pagos del administrador.');
+    } finally {
+        hideSpinner();
+    }
+}
+
+
 // Edit and Delete bills from modal
 billHistoryModal.addEventListener('click', async (e) => {
     const editBtn = e.target.closest('.edit-bill-btn');
@@ -492,35 +568,18 @@ billHistoryModal.addEventListener('click', async (e) => {
             const bill = billDoc.data();
             const residentDoc = await db.collection('residents').doc(bill.residentId).get();
             const resident = residentDoc.data();
+            const residentBalance = resident.balance || 0;
 
             let previousBalance = 0;
             let accumulatedCredit = 0;
 
-            // FIX: Removida la cláusula orderBy y se ordenará en el cliente para evitar el error de índice
-            const allBillsSnapshot = await db.collection('bills')
-                .where('residentId', '==', bill.residentId)
-                .get();
+            // Se toma el saldo del residente directamente, y se ajusta según la factura actual si es necesario
+            if (residentBalance > 0) {
+                accumulatedCredit = residentBalance;
+            } else {
+                previousBalance = Math.abs(residentBalance);
+            }
 
-            const allBills = allBillsSnapshot.docs.map(doc => ({
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.seconds || 0
-            }));
-            allBills.sort((a, b) => a.createdAt - b.createdAt);
-
-            allBills.forEach(prevBill => {
-                if (prevBill.createdAt < bill.createdAt.seconds) {
-                    if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            accumulatedCredit += credit;
-                        }
-                    }
-                }
-            });
-
-            // FIX: Lógica de cálculo corregida para el PDF
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
                 dueDate.setHours(0, 0, 0, 0);
@@ -604,7 +663,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
-                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(saldoAFavorFinal)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(accumulatedCredit)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(currentCredit)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                         </tr>
@@ -855,35 +914,19 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const bill = billDoc.data();
             const residentDoc = await db.collection('residents').doc(bill.residentId).get();
             const resident = residentDoc.data();
+            const residentBalance = resident.balance || 0;
 
             let previousBalance = 0;
             let accumulatedCredit = 0;
 
-            // FIX: Removida la cláusula orderBy y se ordenará en el cliente para evitar el error de índice
-            const allBillsSnapshot = await db.collection('bills')
-                .where('residentId', '==', bill.residentId)
-                .get();
+            // Se toma el saldo del residente directamente, y se ajusta según la factura actual si es necesario
+            if (residentBalance > 0) {
+                accumulatedCredit = residentBalance;
+            } else {
+                previousBalance = Math.abs(residentBalance);
+            }
 
-            const allBills = allBillsSnapshot.docs.map(doc => ({
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.seconds || 0
-            }));
-            allBills.sort((a, b) => a.createdAt - b.createdAt);
 
-            allBills.forEach(prevBill => {
-                if (prevBill.createdAt < bill.createdAt.seconds) {
-                    if (prevBill.status === 'Pendiente') {
-                        previousBalance += prevBill.amount;
-                    } else if (prevBill.status === 'Pagada' && prevBill.paidAmount) {
-                        const credit = prevBill.paidAmount - prevBill.amount;
-                        if (credit > 0) {
-                            accumulatedCredit += credit;
-                        }
-                    }
-                }
-            });
-
-            // FIX: Lógica de cálculo corregida para el PDF
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
             if (dueDate) {
                 dueDate.setHours(0, 0, 0, 0);
