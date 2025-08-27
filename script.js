@@ -315,53 +315,51 @@ residentSearch.addEventListener('input', (e) => {
 });
 
 // --- FUNCIÓN AÑADIDA PARA ENVIAR CORREO ---
-async function sendEmail(recipientEmail, subject, body) {
+async function sendEmailToResident(residentId) {
+    showSpinner();
     try {
-        const response = await fetch('http://localhost:3000/api/send-email', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                correo: recipientEmail,
-                asunto: subject,
-                cuerpo: body
-            })
-        });
+        const residentDoc = await db.collection('residents').doc(residentId).get();
 
-        if (!response.ok) {
-            throw new Error('La respuesta del servidor no fue exitosa.');
+        if (residentDoc.exists) {
+            const resident = residentDoc.data();
+            const emailSubject = 'Recordatorio de Recibo';
+            const emailBody = `Hola ${resident.name},\n\nTe recordamos que hay un nuevo recibo disponible en tu perfil. Por favor, ingresa a la aplicación para revisarlo.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
+
+            const response = await fetch('http://localhost:3000/api/send-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    correo: resident.email,
+                    asunto: emailSubject,
+                    cuerpo: emailBody
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('La respuesta del servidor no fue exitosa.');
+            }
+
+            const data = await response.json();
+            console.log('Correo enviado:', data.message);
+
+            // Actualizar el contador de avisos para el residente
+            const newNotifications = (resident.cantidadAvisos || 0) + 1;
+            await db.collection('residents').doc(residentId).update({ cantidadAvisos: newNotifications });
+            console.log(`Contador de avisos actualizado a ${newNotifications} para el residente con ID: ${residentId}`);
+            
+            alert('Correo de recordatorio enviado exitosamente.');
+            return true;
+        } else {
+            alert('No se encontró al residente para enviar la notificación.');
+            return false;
         }
-
-        const data = await response.json();
-        console.log('Correo enviado:', data.message);
-        return true;
 
     } catch (error) {
         console.error('Error al enviar el email:', error);
         alert(`Error al enviar el email: ${error.message}`);
         return false;
-    }
-}
-
-async function sendEmailToResident(residentId) {
-    showSpinner();
-    try {
-        const residentDoc = await db.collection('residents').doc(residentId).get();
-        if (residentDoc.exists) {
-            const resident = residentDoc.data();
-            const emailSubject = `Recordatorio de Recibo`;
-            const emailBody = `Hola ${resident.name},\n\nTe recordamos que hay un nuevo recibo disponible en tu perfil. Por favor, ingresa a la aplicación para revisarlo.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
-            const emailSent = await sendEmail(resident.email, emailSubject, emailBody);
-            if (emailSent) {
-                alert('Correo de recordatorio enviado exitosamente.');
-            }
-        } else {
-            alert('No se encontró al residente para enviar la notificación.');
-        }
-    } catch (err) {
-        console.error("Error sending email:", err);
-        alert('Error al enviar el correo.');
     } finally {
         hideSpinner();
     }
