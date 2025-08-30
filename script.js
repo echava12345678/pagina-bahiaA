@@ -130,7 +130,7 @@ loginForm.addEventListener('submit', async (e) => {
     showSpinner();
 
     try {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   if (username === 'BAHIAA' && password === 'BAHIAA2025') { // Simple admin check
+        if (username === 'BAHIAA' && password === 'BAHIAA2025') { // Simple admin check
             showPage(adminPanel);
             loadResidents();
             auth.signInWithEmailAndPassword('admin@edificio.com', password) // Use a static email for Firebase auth
@@ -372,6 +372,8 @@ billForm.addEventListener('submit', async (e) => {
     const residentId = billForm['bill-resident-id'].value;
     const dueDate = billForm['bill-due-date'].value;
     const amount = parseCurrency(billForm['bill-amount'].value);
+    const fines = parseCurrency(billForm['bill-fines'].value);
+    const extraFees = parseCurrency(billForm['bill-extra-fees'].value);
     const concept = billForm['bill-concept'].value;
     const status = billForm['bill-status'].value;
     const paymentDate = billForm['bill-payment-date'].value;
@@ -386,6 +388,8 @@ billForm.addEventListener('submit', async (e) => {
             residentId,
             dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
             amount,
+            fines,
+            extraFees,
             concept,
             status,
             paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
@@ -445,6 +449,8 @@ excelFile.addEventListener('change', async (e) => {
         const conceptIndex = header.indexOf('concepto');
         const paymentDateIndex = header.indexOf('fecha_pago');
         const paidAmountIndex = header.indexOf('monto_pagado');
+        const finesIndex = header.indexOf('multas');
+        const extraFeesIndex = header.indexOf('cuotas_extras');
 
         if (idIndex === -1 || dueDateIndex === -1 || amountIndex === -1) {
             alert('El archivo Excel debe contener las columnas: id_residente, fecha_vencimiento, monto.');
@@ -460,14 +466,19 @@ excelFile.addEventListener('change', async (e) => {
                     const dueDate = new Date((row[dueDateIndex] - (25567 + 1)) * 86400 * 1000); // Excel date to JS Date
                     const paymentDate = row[paymentDateIndex] ? new Date((row[paymentDateIndex] - (25567 + 1)) * 86400 * 1000) : null;
                     const paidAmount = row[paidAmountIndex] || 0;
+                    const fines = row[finesIndex] || 0;
+                    const extraFees = row[extraFeesIndex] || 0;
+
 
                     batch.set(billRef, {
                         residentId: row[idIndex].toString(),
                         dueDate: firebase.firestore.Timestamp.fromDate(dueDate),
                         amount: parseFloat(row[amountIndex]),
+                        fines: parseFloat(fines),
+                        extraFees: parseFloat(extraFees),
                         concept: row[conceptIndex] || 'Sin concepto',
                         status: row[statusIndex] || 'Pendiente',
-                        paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(paymentDate) : null,
+                        paymentDate: paymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
                         paidAmount: paidAmount,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
@@ -516,6 +527,8 @@ async function showBillHistory(residentId) {
                 row.innerHTML = `
                     <td>${formatDate(bill.dueDate)}</td>
                     <td>${formatCurrency(bill.amount)}</td>
+                    <td>${formatCurrency(bill.fines || 0)}</td>
+                    <td>${formatCurrency(bill.extraFees || 0)}</td>
                     <td>${formatCurrency(bill.paidAmount || 0)}</td>
                     <td>${bill.concept}</td>
                     <td class="status-${bill.status.toLowerCase().replace(' ', '-')}">${bill.status}</td>
@@ -645,7 +658,7 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                     (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
                 const multa = isLate ? prevBill.amount * 0.015 : 0;
 
-                const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
+                const unpaidAmount = (prevBill.amount + multa + (prevBill.fines || 0) + (prevBill.extraFees || 0)) - (prevBill.paidAmount || 0);
 
                 if (unpaidAmount > 0) {
                     previousBalance += unpaidAmount;
@@ -670,7 +683,7 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                 (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
 
             const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDueThisMonth = bill.amount + multa;
+            const totalDueThisMonth = bill.amount + multa + (bill.fines || 0) + (bill.extraFees || 0);
             const paidThisMonth = bill.paidAmount || 0;
 
             // --- Lógica Corregida para calcular el Total a Pagar y el Saldo a Favor final ---
@@ -738,6 +751,18 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">MULTAS</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.fines || 0)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.fines || 0)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">CUOTAS EXTRAS</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.extraFees || 0)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.extraFees || 0)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
@@ -850,7 +875,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                     (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
                 const multa = isLate ? prevBill.amount * 0.015 : 0;
 
-                const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
+                const unpaidAmount = (prevBill.amount + multa + (prevBill.fines || 0) + (prevBill.extraFees || 0)) - (prevBill.paidAmount || 0);
 
                 if (unpaidAmount > 0) {
                     previousBalance += unpaidAmount;
@@ -874,7 +899,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                 (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
 
             const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDueThisMonth = bill.amount + multa;
+            const totalDueThisMonth = bill.amount + multa + (bill.fines || 0) + (bill.extraFees || 0);
             const paidThisMonth = bill.paidAmount || 0;
 
             const totalOwed = saldoAnteriorAjustado + totalDueThisMonth;
@@ -940,6 +965,18 @@ billHistoryModal.addEventListener('click', async (e) => {
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">MULTAS</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.fines || 0)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.fines || 0)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">CUOTAS EXTRAS</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.extraFees || 0)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.extraFees || 0)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
@@ -1012,6 +1049,8 @@ async function showEditBillModal(billId) {
         }
 
         editBillForm['edit-bill-amount'].value = bill.amount;
+        editBillForm['edit-bill-fines'].value = bill.fines || 0;
+        editBillForm['edit-bill-extra-fees'].value = bill.extraFees || 0;
         editBillForm['edit-bill-concept'].value = bill.concept;
         editBillForm['edit-bill-status'].value = bill.status;
 
@@ -1040,6 +1079,8 @@ editBillForm.addEventListener('submit', async (e) => {
     const billId = editBillForm['edit-bill-id'].value;
     const dueDate = editBillForm['edit-bill-due-date'].value;
     const amount = parseFloat(editBillForm['edit-bill-amount'].value);
+    const fines = parseFloat(editBillForm['edit-bill-fines'].value);
+    const extraFees = parseFloat(editBillForm['edit-bill-extra-fees'].value);
     const concept = editBillForm['edit-bill-concept'].value;
     const status = editBillForm['edit-bill-status'].value;
     const paymentDate = editBillForm['edit-bill-payment-date'].value;
@@ -1053,6 +1094,8 @@ editBillForm.addEventListener('submit', async (e) => {
         await db.collection('bills').doc(billId).update({
             dueDate: firebase.firestore.Timestamp.fromDate(localDueDate),
             amount,
+            fines,
+            extraFees,
             concept,
             status,
             paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
@@ -1162,7 +1205,8 @@ async function loadResidentBills(residentId) {
                 row.innerHTML = `
                     <td>${bill.concept}</td>
                     <td>${formatCurrency(bill.amount)}</td>
-                    <td>${formatCurrency(bill.paidAmount || 0)}</td>
+                    <td>${formatCurrency(bill.fines || 0)}</td>
+                    <td>${formatCurrency(bill.extraFees || 0)}</td>
                     <td>${formatDate(bill.dueDate)}</td>
                     <td>${formatDate(bill.paymentDate)}</td>
                     <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
@@ -1240,7 +1284,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                     (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
                 const multa = isLate ? prevBill.amount * 0.015 : 0;
 
-                const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
+                const unpaidAmount = (prevBill.amount + multa + (prevBill.fines || 0) + (prevBill.extraFees || 0)) - (prevBill.paidAmount || 0);
 
                 if (unpaidAmount > 0) {
                     previousBalance += unpaidAmount;
@@ -1263,7 +1307,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                 (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
 
             const multa = isLate ? bill.amount * 0.015 : 0;
-            const totalDueThisMonth = bill.amount + multa;
+            const totalDueThisMonth = bill.amount + multa + (bill.fines || 0) + (bill.extraFees || 0);
             const paidThisMonth = bill.paidAmount || 0;
 
             const totalOwed = saldoAnteriorAjustado + totalDueThisMonth;
@@ -1329,6 +1373,18 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
                             <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(multa)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">MULTAS</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.fines || 0)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.fines || 0)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #000;">CUOTAS EXTRAS</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">-</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.extraFees || 0)}</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: right;">${formatCurrency(bill.extraFees || 0)}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px; border: 1px solid #000;">SALDO A FAVOR</td>
