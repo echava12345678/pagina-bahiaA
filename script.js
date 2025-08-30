@@ -402,7 +402,7 @@ billForm.addEventListener('submit', async (e) => {
             const resident = residentDoc.data();
             const emailSubject = `Nueva Factura: ${concept}`;
             const emailBody = `Hola ${resident.name},\n\nSe ha generado una nueva factura en tu perfil por el concepto de ${concept} con un valor de ${formatCurrency(amount)}.\n\nPor favor, ingresa a tu perfil para verificar los detalles.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
-            await sendEmail(resident.email, emailSubject, emailBody);
+            await sendEmailToResident(residentId);
         } else {
             console.error("No se encontró al residente para enviar la notificación.");
         }
