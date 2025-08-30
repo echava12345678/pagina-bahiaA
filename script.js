@@ -323,7 +323,7 @@ async function sendEmailToResident(residentId) {
         if (residentDoc.exists) {
             const resident = residentDoc.data();
             const emailSubject = 'Recordatorio de Recibo';
-            const emailBody = `Hola ${resident.name},\n\nTe recordamos que hay un nuevo recibo disponible en tu perfil. Por favor, ingresa a la aplicación para revisarlo.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
+            const emailBody = `Estimado copropietario ${resident.name},\n\nTe recordamos que hay un nuevo recibo de administración disponible en tu perfil de la página de facturación del edificio Bahia A correspondiente al mes actual "Si usted ya canceló, haga caso omiso a este mensaje".\n\nAtentamente,\nAdministración Bahía Etapa A`;
 
             const response = await fetch('http://localhost:3000/api/send-email', {
                 method: 'POST',
