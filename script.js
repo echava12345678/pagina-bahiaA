@@ -335,7 +335,7 @@ async function sendEmailToResident(residentId) {
                     <p>Administración Edificio Bahía Etapa A</p>
                     <div style="text-align: center; margin-top: 20px;">
                         <a href="https://edificiobahiaa.com/">
-                            <img src="logo bahia a.png" alt="Logo de Edificio Bahía A" style="width: 150px; height: auto;">
+                            <img src="https://github.com/echava12345678/pagina-bahiaA/blob/main/logo%20bahia%20a.png" alt="Logo de Edificio Bahía A" style="width: 150px; height: auto;">
                         </a>
                     </div>
                 </div>
