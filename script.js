@@ -792,7 +792,8 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
                         <tr>
                             <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
                                 CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
-                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A
+                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A<br>
+                                <strong>Sugerimos cambiar su contraseña predefinida copropietario</strong>
                             </td>
                         </tr>
                     </table>
@@ -1018,7 +1019,8 @@ billHistoryModal.addEventListener('click', async (e) => {
                         <tr>
                             <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
                                 CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
-                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A
+                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A<br>
+                                <strong>Sugerimos cambiar su contraseña predefinida copropietario</strong>
                             </td>
                         </tr>
                     </table>
@@ -1442,7 +1444,8 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                         <tr>
                             <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center;">
                                 CONSIGNAR A LA CUENTA DE AHORRO BANCOLOMBIA No 100-426029-73<br>
-                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A
+                                A NOMBRE DE EDIFICIO BAHÍA ETAPA A<br>
+                                <strong>Sugerimos cambiar su contraseña predefinida copropietario</strong>
                             </td>
                         </tr>
                     </table>
