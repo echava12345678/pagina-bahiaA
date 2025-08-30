@@ -396,17 +396,17 @@ billForm.addEventListener('submit', async (e) => {
         billForm.reset();
         loadResidents();
 
-        // --- CÓDIGO AÑADIDO PARA ENVIAR CORREO ---
-        const residentDoc = await db.collection('residents').doc(residentId).get();
-        if (residentDoc.exists) {
-            const resident = residentDoc.data();
-            const emailSubject = `Nueva Factura: ${concept}`;
-            const emailBody = `Hola ${resident.name},\n\nSe ha generado una nueva factura en tu perfil por el concepto de ${concept} con un valor de ${formatCurrency(amount)}.\n\nPor favor, ingresa a tu perfil para verificar los detalles.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
-            await sendEmailToResident(residentId);
-        } else {
-            console.error("No se encontró al residente para enviar la notificación.");
-        }
-        // --- FIN DEL CÓDIGO AÑADIDO ---
+        // // --- CÓDIGO AÑADIDO PARA ENVIAR CORREO ---
+        // const residentDoc = await db.collection('residents').doc(residentId).get();
+        // if (residentDoc.exists) {
+        //     const resident = residentDoc.data();
+        //     const emailSubject = `Nueva Factura: ${concept}`;
+        //     const emailBody = `Hola ${resident.name},\n\nSe ha generado una nueva factura en tu perfil por el concepto de ${concept} con un valor de ${formatCurrency(amount)}.\n\nPor favor, ingresa a tu perfil para verificar los detalles.\n\nSaludos cordiales,\nEdificio Bahía Etapa A`;
+        //     await sendEmailToResident(residentId);
+        // } else {
+        //     console.error("No se encontró al residente para enviar la notificación.");
+        // }
+        // // --- FIN DEL CÓDIGO AÑADIDO ---
 
     } catch (err) {
         console.error("Error adding bill: ", err);
