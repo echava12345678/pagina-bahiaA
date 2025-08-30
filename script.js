@@ -323,8 +323,23 @@ async function sendEmailToResident(residentId) {
         if (residentDoc.exists) {
             const resident = residentDoc.data();
             const emailSubject = 'Recordatorio de Recibo';
-            const emailBody = `Estimado copropietario ${resident.name},\n\nTe recordamos que hay un nuevo recibo de administración disponible en tu perfil de la página de facturación del edificio Bahia A correspondiente al mes actual "Si usted ya canceló, haga caso omiso a este mensaje".\n\nAtentamente,\nhttps://echava12345678.github.io/pagina-bahiaA/Administración Bahía Etapa A `;
-
+            const emailBody =  `
+                <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                    <p>Estimado copropietario(a) <strong>${resident.name}</strong>,</p>
+                    <p>Te recordamos que hay un nuevo recibo de administración disponible en tu perfil de la página de facturación del edificio Bahia A correspondiente al mes actual.</p>
+                    <p>Si usted ya canceló, haga caso omiso a este mensaje.</p>
+                    <p>Por favor, ingrese al siguiente enlace para ver su factura:</p>
+                    <p><a href="https://edificiobahiaa.com/" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Ir a la Página de Facturación</a></p>
+                    <br>
+                    <p>Atentamente,</p>
+                    <p>Administración Edificio Bahía Etapa A</p>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <a href="https://edificiobahiaa.com/">
+                            <img src="logo bahia a.png" alt="Logo de Edificio Bahía A" style="width: 150px; height: auto;">
+                        </a>
+                    </div>
+                </div>
+            `;
             const response = await fetch('http://localhost:3000/api/send-email', {
                 method: 'POST',
                 headers: {
