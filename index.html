@@ -52,17 +52,17 @@
         <div class="panel-container">
             <div id="admin-dashboard">
                 <section class="admin-section">
-                    <h2 class="section-title"><i class="fas fa-users-cog"></i> Gestión de Residentes</h2>
+                    <h2 class="section-title"><i class="fas fa-users-cog"></i> Gestión de Propietarios</h2>
                     <div class="action-buttons">
                         <button id="show-add-resident-btn" class="btn primary-btn"><i class="fas fa-user-plus"></i> Agregar manualmente</button>
                     </div>
 
                     <div id="add-resident-form" class="form-section hidden">
-                        <h3>Agregar Nuevo Residente</h3>
+                        <h3>Agregar Nuevo Propietario</h3>
                         <form id="resident-form">
                             <div class="form-row">
                                 <div class="input-group">
-                                    <label for="resident-id">ID Residente</label>
+                                    <label for="resident-id">ID Propietario</label>
                                     <input type="text" id="resident-id" required>
                                 </div>
                                 <div class="input-group">
@@ -70,7 +70,7 @@
                                     <input type="text" id="resident-name" required>
                                 </div>
                                 <div class="input-group">
-                                    <label for="resident-depto">Departamento</label>
+                                    <label for="resident-depto">Apartamento</label>
                                     <input type="text" id="resident-depto" required>
                                 </div>
                              <div class="input-group">
@@ -89,7 +89,7 @@
                                 </div>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn primary-btn">Crear Residente</button>
+                                <button type="submit" class="btn primary-btn">Crear Propietario</button>
                             </div>
                         </form>
                     </div>
@@ -117,7 +117,7 @@
                         <form id="bill-form">
                             <div class="form-row">
                                 <div class="input-group">
-                                    <label for="bill-resident-id">ID Residente</label>
+                                    <label for="bill-resident-id">ID Propietario</label>
                                     <input type="text" id="bill-resident-id" required>
                                 </div>
                                 <div class="input-group">
@@ -160,7 +160,7 @@
                 </section>
                 
                 <section class="admin-section">
-                    <h2 class="section-title"><i class="fas fa-list-alt"></i> Facturas y Residentes</h2>
+                    <h2 class="section-title"><i class="fas fa-list-alt"></i> Facturas y PropietarioS</h2>
                     <div class="table-container">
                         <input type="text" id="resident-search" class="search-input" placeholder="Buscar por ID, nombre o departamento...">
                         <table id="residents-table">
@@ -168,7 +168,7 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Nombre</th>
-                                    <th>Departamento</th>
+                                    <th>Apartamento</th>
                                     <th>Usuario</th>
                                     <th>Acciones</th>
                                     <th>Descarga los recibos en "Ver facturas"</th>
@@ -212,7 +212,7 @@
                         <table id="admin-payments-table">
                             <thead>
                                 <tr>
-                                    <th>Residente</th>
+                                    <th>Propietario</th>
                                     <th>Fecha de Pago</th>
                                     <th>Monto Pagado</th>
                                     <th>Concepto</th>
@@ -313,7 +313,7 @@
             <div class="header-content">
                 <h1 class="logo-text">
                     <img src="logo bahia a.png" alt="Logo de Edificio Bahia-A" class="logo-image">
-                    Panel de Residente
+                    Panel de Propietario
                 </h1>
                 <div class="user-info">
                     <span id="resident-welcome"></span>
