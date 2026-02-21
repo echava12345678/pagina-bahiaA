@@ -1073,32 +1073,34 @@ async function showEditBillModal(billId) {
     try {
         const billDoc = await db.collection('bills').doc(billId).get();
         const bill = billDoc.data();
-        editBillForm['edit-bill-id'].value = billId;
+        
+        document.getElementById('edit-bill-id').value = billId;
 
-        // Corrección de la fecha:
+        // Corrección de la fecha de vencimiento
         const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
         if (dueDate) {
             const localDueDate = new Date(dueDate.getTime() - dueDate.getTimezoneOffset() * 60000);
-            editBillForm['edit-bill-due-date'].value = localDueDate.toISOString().slice(0, 10);
+            document.getElementById('edit-bill-due-date').value = localDueDate.toISOString().slice(0, 10);
         } else {
-            editBillForm['edit-bill-due-date'].value = '';
+            document.getElementById('edit-bill-due-date').value = '';
         }
 
-        editBillForm['edit-bill-amount'].value = bill.amount;
-        editBillForm['edit-bill-concept'].value = bill.concept;
-        editBillForm['edit-bill-status'].value = bill.status;
-        editBillForm['edit-bill-fines'].value = bill.fines || 0;
-        editBillForm['edit-bill-fines-concept'].value = bill.finesConcept || '';
-        editBillForm['edit-bill-extra-fees'].value = bill.extraFees || 0;
-        editBillForm['edit-bill-extra-fees-concept'].value = bill.extraFeesConcept || '';
-        editBillForm['edit-bill-paid-amount'].value = bill.paidAmount || '';
+        document.getElementById('edit-bill-amount').value = bill.amount;
+        document.getElementById('edit-bill-concept').value = bill.concept;
+        document.getElementById('edit-bill-status').value = bill.status;
+        document.getElementById('edit-bill-fines').value = bill.fines || 0;
+        document.getElementById('edit-bill-fines-concept').value = bill.finesConcept || '';
+        document.getElementById('edit-bill-extra-fees').value = bill.extraFees || 0;
+        document.getElementById('edit-bill-extra-fees-concept').value = bill.extraFeesConcept || '';
+        document.getElementById('edit-bill-paid-amount').value = bill.paidAmount || '';
 
+        // Corrección de la fecha de pago
         const paymentDate = bill.paymentDate ? new Date(bill.paymentDate.seconds * 1000) : null;
         if (paymentDate) {
             const localPaymentDate = new Date(paymentDate.getTime() - paymentDate.getTimezoneOffset() * 60000);
-            editBillForm['edit-bill-payment-date'].value = localPaymentDate.toISOString().slice(0, 10);
+            document.getElementById('edit-bill-payment-date').value = localPaymentDate.toISOString().slice(0, 10);
         } else {
-            editBillForm['edit-bill-payment-date'].value = '';
+            document.getElementById('edit-bill-payment-date').value = '';
         }
 
         billHistoryModal.classList.remove('active');
