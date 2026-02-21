@@ -73,11 +73,11 @@
                                     <label for="resident-depto">Apartamento</label>
                                     <input type="text" id="resident-depto" required>
                                 </div>
-                             <div class="input-group">
-                            <label for="resident-email">Correo Electrónico</label>
-                            <input type="email" id="resident-email" required>
-                        </div>
-                    </div>
+                                <div class="input-group">
+                                    <label for="resident-email">Correo Electrónico</label>
+                                    <input type="email" id="resident-email" required>
+                                </div>
+                            </div>
                             <div class="form-row">
                                 <div class="input-group">
                                     <label for="resident-username">Usuario (Inicial)</label>
@@ -113,71 +113,71 @@
                     </div>
                     
                     <div id="add-bill-form" class="form-section hidden">
-    <h3>Agregar Factura Manualmente</h3>
-    <form id="bill-form">
-        <div class="form-row">
-            <div class="input-group">
-                <label for="bill-resident-id">ID Propietario</label>
-                <input type="text" id="bill-resident-id" required>
-            </div>
-            <div class="input-group">
-                <label for="bill-due-date">Fecha de Vencimiento</label>
-                <input type="date" id="bill-due-date" required>
-            </div>
-            <div class="input-group">
-                <label for="bill-amount">Monto ($)</label>
-                <input type="number" id="bill-amount" step="0.01" required>
-            </div>
-        </div>
-        
-        <div class="form-row">
-            <div class="input-group">
-                <label for="bill-fines">Multas ($)</label>
-                <input type="number" id="bill-fines" step="0.01" value="0">
-            </div>
-            <div class="input-group">
-                <label for="bill-fines-concept">Concepto de la Multa</label>
-                <input type="text" id="bill-fines-concept" placeholder="Opcional">
-            </div>
-        </div>
-        
-        <div class="form-row">
-            <div class="input-group">
-                <label for="bill-extra-fees">Cuotas Extras ($)</label>
-                <input type="number" id="bill-extra-fees" step="0.01" value="0">
-            </div>
-            <div class="input-group">
-                <label for="bill-extra-fees-concept">Concepto de la Cuota Extra</label>
-                <input type="text" id="bill-extra-fees-concept" placeholder="Opcional">
-            </div>
-        </div>
+                        <h3>Agregar Factura Manualmente</h3>
+                        <form id="bill-form">
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="bill-resident-id">ID Propietario</label>
+                                    <input type="text" id="bill-resident-id" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-due-date">Fecha de Vencimiento</label>
+                                    <input type="date" id="bill-due-date" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-amount">Monto ($)</label>
+                                    <input type="number" id="bill-amount" step="0.01" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="bill-fines">Multas ($)</label>
+                                    <input type="number" id="bill-fines" step="0.01" value="0">
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-fines-concept">Concepto de la Multa</label>
+                                    <input type="text" id="bill-fines-concept" placeholder="Opcional">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="bill-extra-fees">Cuotas Extras ($)</label>
+                                    <input type="number" id="bill-extra-fees" step="0.01" value="0">
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-extra-fees-concept">Concepto de la Cuota Extra</label>
+                                    <input type="text" id="bill-extra-fees-concept" placeholder="Opcional">
+                                </div>
+                            </div>
 
-        <div class="form-row">
-            <div class="input-group">
-                <label for="bill-concept">Concepto</label>
-                <input type="text" id="bill-concept" required>
-            </div>
-            <div class="input-group">
-                <label for="bill-status">Estado</label>
-                <select id="bill-status" required>
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="Pagada">Pagada</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label for="bill-payment-date">Fecha de Pago</label>
-                <input type="date" id="bill-payment-date">
-            </div>
-        </div>
-        <div class="input-group">
-            <label for="bill-paid-amount">Cuánto pagó</label>
-            <input type="number" id="bill-paid-amount" step="any" min="0" placeholder="Opcional">
-        </div>
-        <div class="form-actions">
-            <button type="submit" class="btn primary-btn">Agregar Factura</button>
-        </div>
-    </form>
-</div>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="bill-concept">Concepto</label>
+                                    <input type="text" id="bill-concept" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-status">Estado</label>
+                                    <select id="bill-status" required>
+                                        <option value="Pendiente">Pendiente</option>
+                                        <option value="Pagada">Pagada</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bill-payment-date">Fecha de Pago</label>
+                                    <input type="date" id="bill-payment-date">
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="bill-paid-amount">Cuánto pagó</label>
+                                <input type="number" id="bill-paid-amount" step="any" min="0" placeholder="Opcional">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn primary-btn">Agregar Factura</button>
+                            </div>
+                        </form>
+                    </div>
                 </section>
                 
                 <section class="admin-section">
@@ -194,30 +194,30 @@
                                     <th>Acciones</th>
                                     <th>Descarga los recibos en "Ver facturas"</th>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                                                <tr>
-                                    <td>Apto_101</td>
-                                    <td>Juan Pérez</td>
-                                    <td>101</td>
-                                    <td>juanperez</td>
-                                    <td>
-                                        <button class="btn primary-btn view-bills-btn" data-id="Apto_101">
-                                            <i class="fas fa-eye"></i> Ver Facturas
-                                        </button>
-                                        <button class="btn logout-btn delete-resident-btn" data-id="Apto_101">
-                                            <i class="fas fa-trash-alt"></i> Eliminar
-                                        </button>
-                                                                                <button class="btn secondary-btn send-email-btn" data-id="Apto_101">
-                                            <i class="fas fa-envelope"></i> Enviar Correo
-                                        </button>
-                                                                            </td>
-                                    <td>Descarga los recibos en "Ver facturas"</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Apto_101</td>
+                                    <td>Juan Pérez</td>
+                                    <td>101</td>
+                                    <td>juanperez</td>
+                                    <td>
+                                        <button class="btn primary-btn view-bills-btn" data-id="Apto_101">
+                                            <i class="fas fa-eye"></i> Ver Facturas
+                                        </button>
+                                        <button class="btn logout-btn delete-resident-btn" data-id="Apto_101">
+                                            <i class="fas fa-trash-alt"></i> Eliminar
+                                        </button>
+                                        <button class="btn secondary-btn send-email-btn" data-id="Apto_101">
+                                            <i class="fas fa-envelope"></i> Enviar Correo
+                                        </button>
+                                    </td>
+                                    <td>Descarga los recibos en "Ver facturas"</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
                 
                 <section class="admin-section">
                     <h2 class="section-title"><i class="fas fa-history"></i> Historial de Pagos</h2>
@@ -226,9 +226,7 @@
                     </div>
             
                     <div id="admin-payments-section" class="table-container hidden">
-                        <div class="filter-controls">
-           
-        </div>
+                        <div class="filter-controls"></div>
                        
                         <table id="admin-payments-table">
                             <thead>
@@ -253,15 +251,7 @@
                         <span class="close-btn">&times;</span>
                         <h3 id="modal-title">Historial de Facturas</h3>
                         <div class="modal-body">
-                            <div class="filter-controls">
-        </div>
-<!--                             <div class="filter-controls">
-                                <label for="modal-start-date">Desde:</label>
-                                <input type="date" id="modal-start-date">
-                                <label for="modal-end-date">Hasta:</label>
-                                <input type="date" id="modal-end-date">
-                                <button id="modal-filter-btn" class="btn primary-btn">Buscar</button>
-                            </div> -->
+                            <div class="filter-controls"></div>
                             <table id="bill-history-table">
                                 <thead>
                                     <tr>
@@ -287,38 +277,64 @@
                         <span class="close-btn">&times;</span>
                         <h3>Editar Factura</h3>
                         <form id="edit-bill-form">
+                            <input type="hidden" id="edit-bill-id" name="edit-bill-id">
+                            
                             <div class="form-row">
-                                <input type="hidden" id="edit-bill-id">
                                 <div class="input-group">
                                     <label for="edit-bill-due-date">Fecha de Vencimiento</label>
-                                    <input type="date" id="edit-bill-due-date" required>
+                                    <input type="date" id="edit-bill-due-date" name="edit-bill-due-date" required>
                                 </div>
                                 <div class="input-group">
                                     <label for="edit-bill-amount">Monto ($)</label>
-                                    <input type="number" id="edit-bill-amount" step="0.01" required>
+                                    <input type="number" id="edit-bill-amount" name="edit-bill-amount" step="0.01" required>
                                 </div>
                             </div>
+
                             <div class="input-group">
-                <label for="edit-bill-paid-amount">Cuánto pagó</label>
-                <input type="number" id="edit-bill-paid-amount" step="any" min="0" placeholder="Opcional">
-            </div>
+                                <label for="edit-bill-paid-amount">Cuánto pagó</label>
+                                <input type="number" id="edit-bill-paid-amount" name="edit-bill-paid-amount" step="any" min="0" placeholder="Opcional">
+                            </div>
+
                             <div class="form-row">
                                 <div class="input-group">
                                     <label for="edit-bill-concept">Concepto</label>
-                                    <input type="text" id="edit-bill-concept" required>
+                                    <input type="text" id="edit-bill-concept" name="edit-bill-concept" required>
                                 </div>
                                 <div class="input-group">
                                     <label for="edit-bill-status">Estado</label>
-                                    <select id="edit-bill-status" required>
+                                    <select id="edit-bill-status" name="edit-bill-status" required>
                                         <option value="Pendiente">Pendiente</option>
                                         <option value="Pagada">Pagada</option>
                                     </select>
                                 </div>
                                 <div class="input-group">
                                     <label for="edit-bill-payment-date">Fecha de Pago</label>
-                                    <input type="date" id="edit-bill-payment-date">
+                                    <input type="date" id="edit-bill-payment-date" name="edit-bill-payment-date">
                                 </div>
                             </div>
+
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="edit-bill-fines">Multas ($)</label>
+                                    <input type="number" id="edit-bill-fines" name="edit-bill-fines" step="0.01" value="0">
+                                </div>
+                                <div class="input-group">
+                                    <label for="edit-bill-fines-concept">Concepto de la Multa</label>
+                                    <input type="text" id="edit-bill-fines-concept" name="edit-bill-fines-concept" placeholder="Opcional">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="edit-bill-extra-fees">Cuotas Extras ($)</label>
+                                    <input type="number" id="edit-bill-extra-fees" name="edit-bill-extra-fees" step="0.01" value="0">
+                                </div>
+                                <div class="input-group">
+                                    <label for="edit-bill-extra-fees-concept">Concepto de la Cuota Extra</label>
+                                    <input type="text" id="edit-bill-extra-fees-concept" name="edit-bill-extra-fees-concept" placeholder="Opcional">
+                                </div>
+                            </div>
+
                             <div class="form-actions">
                                 <button type="submit" class="btn primary-btn">Guardar Cambios</button>
                             </div>
@@ -347,8 +363,7 @@
             <section class="resident-section">
                 <h2 class="section-title"><i class="fas fa-file-invoice"></i> Mis Facturas</h2>
                 <div class="table-container">
-                    <div class="filter-controls">
-        </div>
+                    <div class="filter-controls"></div>
                     <table id="resident-bills-table">
                         <thead>
                             <tr>
