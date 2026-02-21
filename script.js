@@ -395,6 +395,7 @@ billForm.addEventListener('submit', async (e) => {
     const status = billForm['bill-status'].value;
     const paymentDate = billForm['bill-payment-date'].value;
     const paidAmount = parseCurrency(billForm['bill-paid-amount'].value) || 0;
+        const accountNumber = billForm['bill-account-number'].value;
 
     showSpinner();
     try {
@@ -410,6 +411,7 @@ billForm.addEventListener('submit', async (e) => {
             extraFees,
             extraFeesConcept,
             concept,
+            accountNumber,
             status,
             paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
             paidAmount: paidAmount,
@@ -949,7 +951,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
                         <tr>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${bill.createdAt.seconds}</span><br>
+                               <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${bill.createdAt.seconds}</span><br>
                                 <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
                             </td>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
@@ -1086,6 +1088,7 @@ async function showEditBillModal(billId) {
         }
 
         document.getElementById('edit-bill-amount').value = bill.amount;
+         document.getElementById('edit-bill-account-number').value = bill.accountNumber|| '';
         document.getElementById('edit-bill-concept').value = bill.concept;
         document.getElementById('edit-bill-status').value = bill.status;
         document.getElementById('edit-bill-fines').value = bill.fines || 0;
@@ -1126,6 +1129,7 @@ editBillForm.addEventListener('submit', async (e) => {
     const status = editBillForm['edit-bill-status'].value;
     const paymentDate = editBillForm['edit-bill-payment-date'].value;
     const paidAmount = parseCurrency(editBillForm['edit-bill-paid-amount'].value) || 0;
+        const accountNumber = editBillForm['edit-bill-account-number'].value;
 
     showSpinner();
     try {
@@ -1140,6 +1144,7 @@ editBillForm.addEventListener('submit', async (e) => {
             extraFees,
             extraFeesConcept,
             concept,
+            accountNumber,
             status,
             paymentDate: localPaymentDate ? firebase.firestore.Timestamp.fromDate(localPaymentDate) : null,
             paidAmount: paidAmount
@@ -1376,7 +1381,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
                         <tr>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                                <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${bill.createdAt.seconds}</span><br>
+                                <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${bill.accountNumber || 'N/A'}</span><br>
                                 <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
                             </td>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
