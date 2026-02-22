@@ -1374,7 +1374,7 @@ residentBillsTableBody.addEventListener('click', async (e) => {
                                 </div>
                             </td>
                             <td style="border: 1px solid #000; padding: 10px; text-align: right;">
-                                <img src="logo.png" alt="Logo" style="max-height: 50px;">
+                                <img src="logo bahia a.png" alt="Logo" style="max-height: 50px;">
                             </td>
                         </tr>
                     </table>
