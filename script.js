@@ -951,7 +951,7 @@ billHistoryModal.addEventListener('click', async (e) => {
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
                         <tr>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
-                               <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${bill.createdAt.seconds}</span><br>
+                              <strong>CUENTA DE COBRO No:</strong> <span style="font-size: 14px; font-weight: bold;">${bill.accountNumber || 'N/A'}</span><br>
                                 <strong>REFERENCIA DE PAGO:</strong> <span style="font-size: 14px; font-weight: bold;">${resident.depto}</span>
                             </td>
                             <td style="width: 50%; border: 1px solid #000; padding: 10px;">
