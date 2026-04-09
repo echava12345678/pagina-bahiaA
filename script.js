@@ -151,7 +151,7 @@ loginForm.addEventListener('submit', async (e) => {
                     console.error("Error en Auth:", authErr);
                     // Si el usuario en Auth no existe, entramos de todos modos pero avisamos
                     alert("Aviso: Sesión iniciada sin Auth. Verifica que admin@edificio.com exista en Firebase Authentication.");
-                    showAdminPanel(adminData);
+                    showPage(adminPanel);
                 }
             } else {
                 loginError.textContent = 'Contraseña incorrecta';
