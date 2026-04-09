@@ -130,11 +130,31 @@ loginForm.addEventListener('submit', async (e) => {
     showSpinner();
 
     try {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            if (username === 'BAHIAA' && password === 'BAHIAA2025') { // Simple admin check
-            showPage(adminPanel);
-            loadResidents();
-            auth.signInWithEmailAndPassword('admin@edificio.com', password) // Use a static email for Firebase auth
-                .catch(err => console.error("Admin Auth Error:", err));
+        if (username === 'admin') {
+            // NUEVO: Validar credenciales del admin desde Firestore
+            try {
+                const adminSnapshot = await db.collection('admin').get();
+                
+                if (adminSnapshot.empty) {
+                    loginError.textContent = 'Credenciales incorrectas.';
+                    hideSpinner();
+                    return;
+                }
+
+                const adminDoc = adminSnapshot.docs[0].data();
+                
+                if (adminDoc.username === username && adminDoc.password === password) {
+                    showPage(adminPanel);
+                    loadResidents();
+                    auth.signInWithEmailAndPassword('admin@edificio.com', password)
+                        .catch(err => console.error("Admin Auth Error:", err));
+                } else {
+                    loginError.textContent = 'Credenciales incorrectas.';
+                }
+            } catch (error) {
+                console.error("Error validating admin:", error);
+                loginError.textContent = 'Credenciales incorrectas.';
+            }
         } else {
             const residentSnapshot = await db.collection('residents').where('username', '==', username).limit(1).get();
             if (!residentSnapshot.empty) {
