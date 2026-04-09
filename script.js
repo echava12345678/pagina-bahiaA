@@ -147,11 +147,13 @@ loginForm.addEventListener('submit', async (e) => {
                 try {
                     await auth.signInWithEmailAndPassword('admin@edificio.com', password);
                     showPage(adminPanel);
+                    loadResidents();
                 } catch (authErr) {
                     console.error("Error en Auth:", authErr);
                     // Si el usuario en Auth no existe, entramos de todos modos pero avisamos
                     console.warn("Aviso: Sesión iniciada ");
                     showPage(adminPanel);
+                    loadResidents();
                 }
             } else {
                 loginError.textContent = 'Contraseña incorrecta';
