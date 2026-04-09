@@ -146,7 +146,7 @@ loginForm.addEventListener('submit', async (e) => {
                 // 2. Intentamos loguear en Auth (Esto es lo que pedías)
                 try {
                     await auth.signInWithEmailAndPassword('admin@edificio.com', password);
-                    showAdminPanel(adminData);
+                    showPage(adminPanel);
                 } catch (authErr) {
                     console.error("Error en Auth:", authErr);
                     // Si el usuario en Auth no existe, entramos de todos modos pero avisamos
