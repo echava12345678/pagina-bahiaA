@@ -133,7 +133,7 @@ loginForm.addEventListener('submit', async (e) => {
         if (username === 'admin') {
             // NUEVO: Validar credenciales del admin desde Firestore
             try {
-                const adminSnapshot = await db.collection('admin').get();
+                const adminSnapshot = await db.collection('admin').where('user', '==', username).get();
                 
                 if (adminSnapshot.empty) {
                     loginError.textContent = 'Credenciales incorrectas.';
