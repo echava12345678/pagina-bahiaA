@@ -132,28 +132,29 @@ loginForm.addEventListener('submit', async (e) => {
     try {
         if (username === 'admin') {
             // NUEVO: Validar credenciales del admin desde Firestore
-            try {
-                const adminSnapshot = await db.collection('admin').where('user', '==', username).get();
-                
-                if (adminSnapshot.empty) {
-                    loginError.textContent = 'Credenciales incorrectas.';
-                    hideSpinner();
-                    return;
-                }
+           const adminSnapshot = await db.collection('admin').where('username', '==', username).get();
+            
+            if (adminSnapshot.empty) {
+                loginError.textContent = 'El usuario administrador no existe en la base de datos.';
+                hideSpinner();
+                return;
+            }
 
-                const adminDoc = adminSnapshot.docs[0].data();
-                
-                if (adminDoc.username === username && adminDoc.password === password) {
-                    showPage(adminPanel);
-                    loadResidents();
-                    auth.signInWithEmailAndPassword('admin@edificio.com', password)
-                        .catch(err => console.error("Admin Auth Error:", err));
-                } else {
-                    loginError.textContent = 'Credenciales incorrectas.';
+            const adminData = adminSnapshot.docs[0].data();
+
+            if (adminData.password === password) {
+                // 2. Intentamos loguear en Auth (Esto es lo que pedías)
+                try {
+                    await auth.signInWithEmailAndPassword('admin@edificio.com', password);
+                    showAdminPanel(adminData);
+                } catch (authErr) {
+                    console.error("Error en Auth:", authErr);
+                    // Si el usuario en Auth no existe, entramos de todos modos pero avisamos
+                    alert("Aviso: Sesión iniciada sin Auth. Verifica que admin@edificio.com exista en Firebase Authentication.");
+                    showAdminPanel(adminData);
                 }
-            } catch (error) {
-                console.error("Error validating admin:", error);
-                loginError.textContent = 'Credenciales incorrectas.';
+            } else {
+                loginError.textContent = 'Contraseña incorrecta';
             }
         } else {
             const residentSnapshot = await db.collection('residents').where('username', '==', username).limit(1).get();
