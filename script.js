@@ -124,8 +124,8 @@ function formatCurrency(value) {
 
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = loginForm['username-login'].value;
-    const password = loginForm['password-login'].value;
+    const username = document.getElementById('username-login').value;
+    const password = document.getElementById('password-login').value;
     loginError.textContent = '';
     showSpinner();
 
