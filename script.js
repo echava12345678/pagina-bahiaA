@@ -689,8 +689,21 @@ adminPaymentsTableBody.addEventListener('click', async (e) => {
 
             previousBills.forEach(prevBill => {
                 const dueDate = prevBill.dueDate ? new Date(prevBill.dueDate.seconds * 1000) : null;
-                const isLate = (prevBill.status === 'Pendiente' && new Date() > dueDate) ||
-                    (prevBill.status === 'Pagada' && prevBill.paymentDate && new Date(prevBill.paymentDate.seconds * 1000) > dueDate);
+               let isLate = false;
+    if (dueDate) {
+        // Crear fecha un día después del vencimiento
+        const oneDayAfterDue = new Date(dueDate);
+        oneDayAfterDue.setDate(oneDayAfterDue.getDate() + 1);
+        oneDayAfterDue.setHours(0, 0, 0, 0); // Normalizar a inicio del día
+        
+        if (prevBill.status === 'Pendiente') {
+            isLate = new Date() > oneDayAfterDue;
+        } else if (prevBill.status === 'Pagada' && prevBill.paymentDate) {
+            const paymentDateObj = new Date(prevBill.paymentDate.seconds * 1000);
+            paymentDateObj.setHours(0, 0, 0, 0);
+            isLate = paymentDateObj > oneDayAfterDue;
+        }
+    }
                 const multa = isLate ? prevBill.amount * 0.015 : 0;
 
                 const unpaidAmount = (prevBill.amount + multa) - (prevBill.paidAmount || 0);
@@ -939,12 +952,24 @@ billHistoryModal.addEventListener('click', async (e) => {
             // --- Fin Lógica Corregida ---
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0, 0, 0, 0);
-            }
+            let isLate = false;
 
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
-                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+if (dueDate) {
+    dueDate.setHours(0, 0, 0, 0);
+    
+    // 🟢 Calcular un día después del vencimiento
+    const oneDayAfterDue = new Date(dueDate);
+    oneDayAfterDue.setDate(oneDayAfterDue.getDate() + 1);
+    oneDayAfterDue.setHours(0, 0, 0, 0);
+    
+    if (bill.status === 'Pendiente') {
+        isLate = new Date() > oneDayAfterDue;
+    } else if (bill.status === 'Pagada' && bill.paymentDate) {
+        const paymentDateObj = new Date(bill.paymentDate.seconds * 1000);
+        paymentDateObj.setHours(0, 0, 0, 0);
+        isLate = paymentDateObj > oneDayAfterDue;
+    }
+}
 
             const multa = isLate ? bill.amount * 0.015 : 0;
             const totalDueThisMonth = bill.amount + multa + (bill.fines || 0) + (bill.extraFees || 0);
@@ -1260,19 +1285,42 @@ async function loadResidentBills(residentId) {
         if (billsSnapshot.empty) {
             residentBillsTableBody.innerHTML = `<tr><td colspan="5">No se encontraron facturas pendientes.</td></tr>`;
         } else {
+            
+            const bills = [];
             billsSnapshot.forEach(doc => {
-                const bill = doc.data();
+                bills.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            
+            bills.sort((a, b) => {
+                const dateA = a.dueDate ? new Date(a.dueDate.seconds * 1000) : new Date(0);
+                const dateB = b.dueDate ? new Date(b.dueDate.seconds * 1000) : new Date(0);
+                return dateA - dateB;  // Orden ascendente (más antiguo primero)
+            });
+            
+            
+            bills.forEach(bill => {
                 const today = new Date();
                 // Normaliza la fecha de vencimiento a solo día, mes y año
                 const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-                if (dueDate) {
+                let isLate = false;
+
+                if (dueDate && bill.status === 'Pendiente') {
                     dueDate.setHours(0, 0, 0, 0);
+                    
+                    // Calcular un día después del vencimiento
+                    const oneDayAfterDue = new Date(dueDate);
+                    oneDayAfterDue.setDate(oneDayAfterDue.getDate() + 1);
+                    oneDayAfterDue.setHours(0, 0, 0, 0);
+                    
+                    isLate = today > oneDayAfterDue;
                 }
-                const isLate = dueDate && bill.status === 'Pendiente' && today > dueDate;
 
                 const row = residentBillsTableBody.insertRow();
-                row.dataset.id = doc.id;
-                // FIX: Agregadas las columnas de monto y fecha de pago para igualar la vista de admin
+                row.dataset.id = bill.id;
                 row.innerHTML = `
                     <td>${bill.concept}</td>
                     <td>${formatCurrency(bill.amount)}</td>
@@ -1281,7 +1329,7 @@ async function loadResidentBills(residentId) {
                     <td>${formatDate(bill.paymentDate)}</td>
                     <td class="status-${bill.status.toLowerCase()} ${isLate ? 'status-multa' : ''}">${bill.status} ${isLate ? '(Multa)' : ''}</td>
                     <td>
-                        <button class="btn primary-btn download-receipt-btn" data-id="${doc.id}">
+                        <button class="btn primary-btn download-receipt-btn" data-id="${bill.id}">
                             <i class="fas fa-file-download"></i> Descargar Recibo
                         </button>
                     </td>
@@ -1369,12 +1417,24 @@ residentBillsTableBody.addEventListener('click', async (e) => {
             const saldoAnteriorAjustado = Math.max(0, finalPreviousBalance);
 
             const dueDate = bill.dueDate ? new Date(bill.dueDate.seconds * 1000) : null;
-            if (dueDate) {
-                dueDate.setHours(0, 0, 0, 0);
-            }
+            let isLate = false;
 
-            const isLate = (bill.status === 'Pendiente' && new Date() > dueDate) ||
-                (bill.status === 'Pagada' && bill.paymentDate && new Date(bill.paymentDate.seconds * 1000) > dueDate);
+if (dueDate) {
+    dueDate.setHours(0, 0, 0, 0);
+    
+    // 🟢 Calcular un día después del vencimiento
+    const oneDayAfterDue = new Date(dueDate);
+    oneDayAfterDue.setDate(oneDayAfterDue.getDate() + 1);
+    oneDayAfterDue.setHours(0, 0, 0, 0);
+    
+    if (bill.status === 'Pendiente') {
+        isLate = new Date() > oneDayAfterDue;
+    } else if (bill.status === 'Pagada' && bill.paymentDate) {
+        const paymentDateObj = new Date(bill.paymentDate.seconds * 1000);
+        paymentDateObj.setHours(0, 0, 0, 0);
+        isLate = paymentDateObj > oneDayAfterDue;
+    }
+}
 
             const multa = isLate ? bill.amount * 0.015 : 0;
             const totalDueThisMonth = bill.amount + multa + (bill.fines || 0) + (bill.extraFees || 0);
